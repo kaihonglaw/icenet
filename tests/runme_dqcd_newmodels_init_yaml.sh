@@ -7,6 +7,17 @@
 # Run with: source runme.sh
 
 #source $HOME/setconda.sh
+__conda_setup="$('/vols/cms/khl216/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/vols/cms/khl216/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/vols/cms/khl216/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/vols/cms/khl216/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
 conda activate icenet
 
 ICEPATH="/vols/cms/khl216/icenet_new_models/icenet"

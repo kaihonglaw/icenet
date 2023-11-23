@@ -113,49 +113,6 @@ def printer_newmodels(outputfile, process, path, end_name, filename, xs, force_x
 
         i += 1
 
-def printer_newmodels(outputfile, process, path, end_name, filename, xs, force_xs, isMC, maxevents_scale, rp, flush_index=0):
-  
-  if flush_index == 0:
-    dprint('', 'w') # Empty it
-
-  i = flush_index
-  for mpi in rp['mpi']:
-    for mA in rp['mA']:
-      for ctau in rp['ctau']:
-
-        # MC signal
-        if isMC == 'true' and mpi != 'null':
-          param_name   = f'mpi_{mpi}_mA_{mA}_ctau_{ctau}'
-          process_name = f'{process}_{param_name}'  
-          folder_name  = f'{process_name}'
-
-        # MC background
-        elif isMC == 'true' and mpi == 'null':
-          process_name = f'{process}'  
-          folder_name  = f'{process_name}_{end_name}'
-        
-        # Data
-        else:
-          process_name = f'{process}'
-          folder_name  = f'{end_name}'
-
-        # Print
-        dprint(f'# [{i}]')
-        dprint(f'{path}--{process_name}: &{path}--{process_name}')
-        dprint(f"  path:  \'{path}/{folder_name}\'")
-        dprint(f"  files: \'{filename}\'")
-        dprint(f'  xs:   {xs}')
-        dprint(f'  model_param:')
-        dprint(f'    mpi:    {mpi}')
-        dprint(f'    mA:    {mA}')
-        dprint(f'    ctau: {ctau}')
-        dprint(f'  force_xs: {force_xs}')
-        dprint(f'  isMC:     {isMC}')
-        dprint(f'  maxevents_scale: {maxevents_scale}')
-        dprint(f'')
-
-        i += 1
-
 
 def darkphoton(outputfile, filerange='*'):
   
@@ -413,6 +370,7 @@ def QCD(outputfile, filerange='*'):
       printer_newmodels(**param)
     else:
       printer_newmodels(**param, flush_index=i)
+
 
 
 def data(outputfile, filerange='*', period='B'):
