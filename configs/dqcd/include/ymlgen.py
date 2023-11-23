@@ -5,15 +5,30 @@
 import argparse
 import os
 
-def dprint(string, mode='a'):
+def dprint(outputfile, string, mode='a'):
   print(string)
   with open(outputfile, mode) as f:
     f.write(f'{string} \n')
- 
+
+def str2float(x):
+  """
+  Conversion from '10p1' type str representation to float
+  """
+  if x == 'null':
+    return x
+  
+  if type(x) is str:
+    return float(x.replace('p','.'))
+  elif type(x) is float:
+    return x
+  else:
+    raise Exception(f'str2float: Input {x} should be either str or float')
+
+
 def printer(outputfile, process, path, end_name, filename, xs, force_xs, isMC, maxevents_scale, rp, flush_index=0):
   
   if flush_index == 0:
-    dprint('', 'w') # Empty it
+    dprint(outputfile, '', 'w') # Empty it
 
   i = flush_index
   for m in rp['m']:
@@ -37,20 +52,64 @@ def printer(outputfile, process, path, end_name, filename, xs, force_xs, isMC, m
           folder_name  = f'{end_name}'
 
         # Print
-        dprint(f'# [{i}]')
-        dprint(f'{path}--{process_name}: &{path}--{process_name}')
-        dprint(f"  path:  \'{path}/{folder_name}\'")
-        dprint(f"  files: \'{filename}\'")
-        dprint(f'  xs:   {xs}')
-        dprint(f'  model_param:')
-        dprint(f'    m:    {m}')
-        dprint(f'    ctau: {ctau}')
-        dprint(f'    xiO:  {xi_pair[0]}')
-        dprint(f'    xiL:  {xi_pair[1]}')
-        dprint(f'  force_xs: {force_xs}')
-        dprint(f'  isMC:     {isMC}')
-        dprint(f'  maxevents_scale: {maxevents_scale}')
-        dprint(f'')
+        dprint(outputfile, f'# [{i}]')
+        dprint(outputfile, f'{path}--{process_name}: &{path}--{process_name}')
+        dprint(outputfile, f"  path:  \'{path}/{folder_name}\'")
+        dprint(outputfile, f"  files: \'{filename}\'")
+        dprint(outputfile, f'  xs:   {xs}')
+        dprint(outputfile, f'  model_param:')
+        dprint(outputfile, f'    m:    {str2float(m)}')
+        dprint(outputfile, f'    ctau: {str2float(ctau)}')
+        dprint(outputfile, f'    xiO:  {str2float(xi_pair[0])}')
+        dprint(outputfile, f'    xiL:  {str2float(xi_pair[1])}')
+        dprint(outputfile, f'  force_xs: {force_xs}')
+        dprint(outputfile, f'  isMC:     {isMC}')
+        dprint(outputfile, f'  maxevents_scale: {maxevents_scale}')
+        dprint(outputfile, f'')
+
+        i += 1
+
+
+def printer_newmodels(outputfile, process, path, end_name, filename, xs, force_xs, isMC, maxevents_scale, rp, flush_index=0):
+  
+  if flush_index == 0:
+    dprint(outputfile, '', 'w') # Empty it
+
+  i = flush_index
+  for mpi in rp['mpi']:
+    for mA in rp['mA']:
+      for ctau in rp['ctau']:
+
+        # MC signal
+        if isMC == 'true' and mpi != 'null':
+          param_name   = f'mpi_{mpi}_mA_{mA}_ctau_{ctau}'
+          process_name = f'{process}_{param_name}'  
+          folder_name  = f'{process_name}'
+
+        # MC background
+        elif isMC == 'true' and mpi == 'null':
+          process_name = f'{process}'  
+          folder_name  = f'{process_name}_{end_name}'
+        
+        # Data
+        else:
+          process_name = f'{process}'
+          folder_name  = f'{end_name}'
+
+        # Print
+        dprint(outputfile, f'# [{i}]')
+        dprint(outputfile, f'{path}--{process_name}: &{path}--{process_name}')
+        dprint(outputfile, f"  path:  \'{path}/{folder_name}\'")
+        dprint(outputfile, f"  files: \'{filename}\'")
+        dprint(outputfile, f'  xs:   {xs}')
+        dprint(outputfile, f'  model_param:')
+        dprint(outputfile, f'    mpi:    {str2float(mpi)}')
+        dprint(outputfile, f'    mA:     {str2float(mA)}')
+        dprint(outputfile, f'    ctau:   {str2float(ctau)}')
+        dprint(outputfile, f'  force_xs: {force_xs}')
+        dprint(outputfile, f'  isMC:     {isMC}')
+        dprint(outputfile, f'  maxevents_scale: {maxevents_scale}')
+        dprint(outputfile, f'')
 
         i += 1
 
@@ -256,19 +315,19 @@ def QCD(outputfile, filerange='*'):
   ,
 
   {'path':     'bparkProductionAll_V1p3',
-   'process':  'QCD_Pt-30To50_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2_MINIAODSIM_v1p1_generationSync',
+   'process':  'QCD_Pt-30To50_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
    'end_name': 'MINIAODSIM_v1p1_generationSync',
    'xs': 1362000.0}
   ,
 
   {'path':     'bparkProductionAll_V1p3',
-   'process':  'QCD_Pt-50To80_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2_MINIAODSIM_v1p1_generationSync',
+   'process':  'QCD_Pt-50To80_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
    'end_name': 'MINIAODSIM_v1p1_generationSync',
    'xs': 376600.0}
   ,
 
   {'path':     'bparkProductionAll_V1p3',
-   'process':  'QCD_Pt-80To120_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2_MINIAODSIM_v1p1_generationSync',
+   'process':  'QCD_Pt-80To120_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
    'end_name': 'MINIAODSIM_v1p1_generationSync',
    'xs': 88930.0} 
   ,
@@ -284,9 +343,8 @@ def QCD(outputfile, filerange='*'):
    'end_name': 'MINIAODSIM_v1p1_generationSync',
    'xs': 7055.0}
   ,
-
   {'path':     'bparkProductionAll_V1p3',
-   'process':  'QCD_Pt-300To470_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2_MINIAODSIM_v1p1_generationSync',
+   'process':  'QCD_Pt-300To470_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
    'end_name': 'MINIAODSIM_v1p1_generationSync',
    'xs': 619.3} 
   ,
