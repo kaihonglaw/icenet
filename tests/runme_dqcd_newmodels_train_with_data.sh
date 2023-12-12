@@ -33,8 +33,8 @@ for CONFIG in "tune0-dxy.yml" "tune0-dlen.yml" "tune0-chi2.yml"
 do
     rm $ICEPATH/output/dqcd/processed_data_*
 
-    python analysis/dqcd.py --runmode genesis  --maxevents $MAX --inputmap mc_map__scenarioA_all_model_points.yml --modeltag scenarioA_all_model_points_no_conditional --config $CONFIG --datapath $DATAPATH
-    python analysis/dqcd.py --runmode train    --maxevents $MAX --inputmap mc_map__scenarioA_all_model_points.yml --modeltag scenarioA_all_model_points_no_conditional --config $CONFIG --datapath $DATAPATH --use_conditional $CONDITIONAL
-    python analysis/dqcd.py --runmode eval     --maxevents $MAX --inputmap mc_map__scenarioA_all_model_points.yml --modeltag scenarioA_all_model_points_no_conditional --config $CONFIG --datapath $DATAPATH --use_conditional $CONDITIONAL
-    #python analysis/dqcd.py --runmode optimize --maxevents $MAX --inputmap mc_map__scenarioA_all.yml --modeltag scenarioA_all --config $CONFIG --datapath $DATAPATH --use_conditional $CONDITIONAL
+    python analysis/dqcd.py --runmode genesis  --maxevents $MAX --inputmap mc_map__scenarioA_with_data.yml --modeltag scenarioA_with_data --config $CONFIG --datapath $DATAPATH
+    python analysis/dqcd.py --runmode train    --maxevents $MAX --inputmap mc_map__scenarioA_with_data.yml --modeltag scenarioA_with_data --config $CONFIG --datapath $DATAPATH --use_conditional $CONDITIONAL
+    python analysis/dqcd.py --runmode eval     --maxevents $MAX --inputmap mc_map__scenarioA_with_data.yml --modeltag scenarioA_with_data --config $CONFIG --datapath $DATAPATH --use_conditional $CONDITIONAL
+    #python analysis/dqcd.py --runmode optimize --maxevents $MAX --inputmap mc_map__scenarioA_with_data.yml --modeltag scenarioA_with_data --config $CONFIG --datapath $DATAPATH --use_conditional $CONDITIONAL
 done

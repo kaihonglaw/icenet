@@ -184,7 +184,7 @@ def optimize_selection(args):
       model_param = proc['yaml']['model_param']
       #print(model_param)
 
-      key       = f"$m = {model_param['m']}$ AND $c\\tau = {model_param['ctau']}$"
+      key       = f"$mA = {model_param['mA']}$ AND $c\\tau = {model_param['ctau']}$"
       roc_obj   = resdict['roc_mstats'][key][MVA_model_index]
       roc_path  = resdict['roc_paths'][key][MVA_model_index]
 

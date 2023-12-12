@@ -236,8 +236,21 @@ def process_data(args):
                     ## Apply the input variable set reductor
                     X,ids = aux.red(X=data['data'].x, ids=data['data'].ids, param=param)
 
+                    '''
+                    print("ids = ", ids)
+                    print("len = ", len(ids))
+                    import sys
+                    sys.exit()
+                    '''
+
                     ## Get the MVA-model
                     func_predict, model = get_predictor(args=args, param=param, feature_names=ids)
+                    
+                    '''
+                    model.save_model("/vols/cms/khl216/model_ul_saved.model")
+                    import sys
+                    sys.exit()
+                    '''
 
                     ## ** Conditional model **
                     if args['use_conditional']:

@@ -24,7 +24,7 @@ cd $ICEPATH
 echo "$(pwd)"
 source $ICEPATH/setenv.sh
 
-CONFIG="tune0.yml"
+CONFIG="tune0-chi2.yml"
 DATAPATH="/vols/cms/khl216"
 
-python analysis/dqcd_deploy.py --use_conditional 0 --inputmap 'include/QCD_newmodels_deploy.yml' --modeltag scenarioA_all --grid_id $GRID_ID --grid_nodes $GRID_NODES --config $CONFIG --datapath $DATAPATH
+python analysis/dqcd_deploy.py --use_conditional 0 --inputmap 'include/QCD_newmodels_deploy.yml' --modeltag scenarioA_all_model_points_no_conditional --grid_id $GRID_ID --grid_nodes $GRID_NODES --config $CONFIG --datapath $DATAPATH

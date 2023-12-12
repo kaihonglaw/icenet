@@ -47,7 +47,7 @@ ROC:
   active: true
   num_bootstrap: 200
   xmin: 1.0E-5
-  set_filter: *FILTER
+  #set_filter: *FILTER
 
 ## Binned ROC plots can be 1D or 2D
 ROC_binned:
@@ -68,7 +68,7 @@ ROC_binned:
 MVA_output:
   active: true
   edges: 80
-  set_filter: *FILTER
+  #set_filter: *FILTER
 
 ## (MVA output x External variable) density (2D)
 MVA_2D:
