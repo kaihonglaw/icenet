@@ -39,7 +39,7 @@ def printer(outputfile, process, path, end_name, filename, xs, force_xs, isMC, m
         if isMC == 'true' and m != 'null':
           param_name   = f'm_{m}_ctau_{ctau}_xiO_{rp["xi2str"][xi_pair[0]]}_xiL_{rp["xi2str"][xi_pair[1]]}'
           process_name = f'{process}_{param_name}'  
-          folder_name  = f'{process_name}_{end_name}'
+          folder_name  = f'{process_name}'
 
         # MC background
         elif isMC == 'true' and m == 'null':
@@ -151,13 +151,13 @@ def darkphoton(outputfile, filerange='*'):
 
 def vector(outputfile, filerange='*'):
 
-  process         = 'HiddenValley_vector'
+  process         = 'hiddenValleyGridPack_vector'
 
   # ------------------------------------------
   # Basic
-  filename        = f'output_{filerange}.root'
-  path            = 'bparkProductionAll_V1p0'
-  end_name        = 'privateMC_11X_NANOAODSIM_v1p0_generationSync'
+  filename        = f'data_{filerange}.root'
+  path            = 'bparkProductionAll_V1p3'
+  end_name        = ''
   xs              = '1.0 # [pb]'
   force_xs        = 'true'
   isMC            = 'true'
@@ -252,6 +252,108 @@ def scenarioA(outputfile, filerange='*'):
     'maxevents_scale': maxevents_scale
   }
   printer_newmodels(**param)
+
+def scenarioB1(outputfile, filerange='*'):
+
+  process         = 'scenarioB1'
+
+  # ------------------------------------------
+  # Basic
+  filename        = f'data_{filerange}.root'
+  path            = 'bparkProductionAll_V1p3'
+  end_name        = ''
+  xs              = '1.0 # [pb]'
+  force_xs        = 'true'
+  isMC            = 'true'
+  maxevents_scale = '1.0'
+  # ------------------------------------------
+  
+  rp = {}
+  rp['mpi_mA_pair']  = [['1', '0p33'],['2', '0p67'],['2','0p40'],['4','0p80'],['4','1p33']]
+  rp['ctau']         = ['0p1','1p0','10','100']
+  
+  param = {
+    'outputfile':      outputfile,
+    'rp':              rp,
+    'process':         process,
+    'path':            path,
+    'end_name':        end_name,
+    'filename':        filename,
+    'xs':              xs,
+    'force_xs':        force_xs,
+    'isMC':            isMC,
+    'maxevents_scale': maxevents_scale
+  }
+  printer_newmodels(**param)
+
+
+def scenarioB2(outputfile, filerange='*'):
+
+  process         = 'scenarioB2'
+
+  # ------------------------------------------
+  # Basic
+  filename        = f'data_{filerange}.root'
+  path            = 'bparkProductionAll_V1p3'
+  end_name        = ''
+  xs              = '1.0 # [pb]'
+  force_xs        = 'true'
+  isMC            = 'true'
+  maxevents_scale = '1.0'
+  # ------------------------------------------
+  
+  rp = {}
+  rp['mpi_mA_pair']  = [['1', '0p60'],['2', '1p10'],['4','2p10']]
+  rp['ctau']         = ['0p1','1p0','10','100']
+  
+  param = {
+    'outputfile':      outputfile,
+    'rp':              rp,
+    'process':         process,
+    'path':            path,
+    'end_name':        end_name,
+    'filename':        filename,
+    'xs':              xs,
+    'force_xs':        force_xs,
+    'isMC':            isMC,
+    'maxevents_scale': maxevents_scale
+  }
+  printer_newmodels(**param)
+
+
+def scenarioC(outputfile, filerange='*'):
+
+  process         = 'scenarioC'
+
+  # ------------------------------------------
+  # Basic
+  filename        = f'data_{filerange}.root'
+  path            = 'bparkProductionAll_V1p3'
+  end_name        = ''
+  xs              = '1.0 # [pb]'
+  force_xs        = 'true'
+  isMC            = 'true'
+  maxevents_scale = '1.0'
+  # ------------------------------------------
+  
+  rp = {}
+  rp['mpi_mA_pair']  = [['2', '1p60'],['4', '3p20'],['10','8p00']]
+  rp['ctau']         = ['0p1','1p0','10','100']
+  
+  param = {
+    'outputfile':      outputfile,
+    'rp':              rp,
+    'process':         process,
+    'path':            path,
+    'end_name':        end_name,
+    'filename':        filename,
+    'xs':              xs,
+    'force_xs':        force_xs,
+    'isMC':            isMC,
+    'maxevents_scale': maxevents_scale
+  }
+  printer_newmodels(**param)
+
 
 
 def QCD(outputfile, filerange='*'):
@@ -368,7 +470,115 @@ def QCD(outputfile, filerange='*'):
     else:
       printer_newmodels(**param, flush_index=i)
 
+def QCD_old_model(outputfile, filerange='*'):
 
+  processes = [ \
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-15To20_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 2799000.0} # pb
+  ,
+  
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-20To30_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 2526000.0 }
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-30To50_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 1362000.0}
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-50To80_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 376600.0}
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-80To120_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 88930.0} 
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-120To170_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 21230.0}  
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-170To300_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 7055.0}
+  ,
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-300To470_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 619.3} 
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-470To600_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 59.24}
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-600To800_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 18.21}
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-800To1000_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 3.275}
+  ,
+
+  {'path':     'bparkProductionAll_V1p3',
+   'process':  'QCD_Pt-1000_MuEnrichedPt5_TuneCP5_13TeV-pythia8_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v2',
+   'end_name': 'MINIAODSIM_v1p1_generationSync',
+   'xs': 1.078} ]
+  
+  rp = {}
+
+  #old models
+  
+  rp['m']       = ['null']
+  rp['ctau']    = ['null'] 
+  rp['xi_pair'] = [['null', 'null']]
+  rp['xi2str']  = ['null']
+
+  for i in range(len(processes)):
+
+    # ------------------------------------------
+    # Basic
+    filename        = f'output_{filerange}.root'
+    force_xs        = 'false'
+    isMC            = 'true'
+    maxevents_scale = '1.0'
+    # ------------------------------------------
+
+    param = {
+      'outputfile':      outputfile,
+      'rp':              rp,
+      'process':         processes[i]['process'],
+      'path':            processes[i]['path'],
+      'end_name':        processes[i]['end_name'],
+      'filename':        filename,
+      'xs':              processes[i]['xs'],
+      'force_xs':        force_xs,
+      'isMC':            isMC,
+      'maxevents_scale': maxevents_scale
+    }
+
+    if i == 0:
+      printer(**param)
+    else:
+      printer(**param, flush_index=i)
 
 def data(outputfile, filerange='*', period='B'):
 
@@ -472,8 +682,20 @@ if __name__ == '__main__':
   elif args.process == 'scenarioA':
     scenarioA(outputfile=outputfile, filerange=args.filerange)
 
+  elif args.process == 'scenarioB1':
+    scenarioB1(outputfile=outputfile, filerange=args.filerange)
+
+  elif args.process == 'scenarioB2':
+    scenarioB2(outputfile=outputfile, filerange=args.filerange)
+
+  elif args.process == 'scenarioC':
+    scenarioC(outputfile=outputfile, filerange=args.filerange)
+
   elif args.process == 'QCD':
     QCD(outputfile=outputfile, filerange=args.filerange)
+
+  elif args.process == 'QCD_old_model':
+    QCD_old_model(outputfile=outputfile, filerange=args.filerange)
   
   elif args.process == 'data-B':
     data(outputfile=outputfile, filerange=args.filerange, period='B')
