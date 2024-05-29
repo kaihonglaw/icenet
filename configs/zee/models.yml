@@ -27,7 +27,7 @@ xgb3Drw:
     min_child_weight: 1.0
     max_delta_step: 1.0
     subsample: 1
-
+    
     colsample_bytree:  1.0
     colsample_bylevel: 1.0
     colsample_bynode:  1.0
@@ -78,7 +78,7 @@ xgb0:
     
     learning_rate: 0.1
     gamma: 1.5
-    max_depth: 20
+    max_depth: 15
     min_child_weight: 1.0
     max_delta_step: 1.0
     subsample: 1
@@ -123,7 +123,7 @@ iceboost0:
     
     learning_rate: 0.1
     gamma: 1.5
-    max_depth: 20
+    max_depth: 15
     min_child_weight: 1.0
     max_delta_step: 1.0
     subsample: 1
@@ -175,7 +175,7 @@ iceboost_plus:
     
     learning_rate: 0.1
     gamma: 1.5
-    max_depth: 20
+    max_depth: 15
     min_child_weight: 1.0
     max_delta_step: 1.0
     subsample: 1
@@ -277,6 +277,7 @@ lzmlp0:
   
   eval_batch_size: 4096
 
+
 ## FastKAN
 #
 fastkan0:
@@ -294,17 +295,17 @@ fastkan0:
   # Model
   conv_type: 'fastkan'
   out_dim: 1   # We want to use sigmoid 1D-output model, comment out for default softmax multiclass
-
+  
   model_param:
     grid_min: -2.0                    # Activation learning param
     grid_max:  2.0                    # 
     num_grids:   8                    # 
-    mlp_dim: [32, 32, 32]             # hidden layer dimensions
-    use_base_update: False            # Use "base MLP" in addition
+    mlp_dim: [128, 128 ,128]          # hidden layer dimensions
+    use_base_update: True             # Use "base MLP" in addition
     
     last_tanh: True                   # Extra tanh layer
     last_tanh_scale: 10.0             # Scale after tanh()
-
+  
   # Optimization
   opt_param:  
     lossfunc: 'binary_cross_entropy'  # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
