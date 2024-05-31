@@ -21,6 +21,7 @@ from icefit import cortools
 
 from icenet.tools import aux
 from icenet.tools import reweight
+from icenet.tools import prints
 
 
 def binengine(bindef, x):
@@ -387,12 +388,13 @@ def density_MVA_wclass(y_pred, y, label, weights=None, class_ids=None, edges=80,
         classlegs = [f'$\\mathcal{{C}} = {k}$, $N={np.sum(y == k)}$ (no weights)' for k in class_ids]
     
     # Handle logits vs probabilities
-    if np.min(y_pred) < 0 or np.max(y_pred) > 1:
-        logit = y_pred
+    THRESH = 1E-5
+    if np.min(y_pred) < (-THRESH) or np.max(y_pred) > (1.0 + THRESH):
+        logit = copy.deepcopy(y_pred)
         prob  = aux.sigmoid(logit)
     else:
-        prob  = y_pred
-        logit = aux.inverse_sigmoid(prob)        
+        prob  = copy.deepcopy(y_pred)
+        logit = aux.inverse_sigmoid(prob)    
     
     # Plot both
     for mode in ['logit', 'prob']:
@@ -403,6 +405,10 @@ def density_MVA_wclass(y_pred, y, label, weights=None, class_ids=None, edges=80,
         for k in class_ids:
             ind = (y == k)
 
+            if np.sum(ind) == 0:
+                print(__name__ + f'.density_MVA_wclass: No samples for class {k} -- continue')
+                continue
+            
             w = weights[ind] if weights is not None else None
             
             if mode == 'logit':
@@ -679,7 +685,7 @@ def density_COR(y_pred, X, ids, label, weights=None, hist_edges=[[50], [50]], pa
     
     # Loop over variables
     for var in ids:
-
+        
         fig,ax = plt.subplots()
 
         # Plot 2D
@@ -860,13 +866,19 @@ def plot_reweight_result(X, y, nbins, binrange, weights, title = '', xlabel = 'x
     
     # Loop over classes
     for c in class_ids:
+
+        ind = (y == c)
+        
+        if np.sum(ind) == 0:
+            print(__name__ + f'.plot_reweight_result: No samples for class {c} -- continue')
+            continue
         
         # Compute histograms with numpy (we use nbins and range() for speed)
         if plot_unweighted:
-            counts, edges = np.histogram(X[y == c], bins=nbins, range=binrange, weights=None)
+            counts, edges = np.histogram(X[ind], bins=nbins, range=binrange, weights=None)
         
-        counts_w, edges = np.histogram(X[y == c], bins=nbins, range=binrange, weights=weights[y == c])
-        mu, std = aux.weighted_avg_and_std(values=X[y == c], weights=weights[y == c])
+        counts_w, edges = np.histogram(X[ind], bins=nbins, range=binrange, weights=weights[ind])
+        mu, std = aux.weighted_avg_and_std(values=X[ind], weights=weights[ind])
         
         min_x = edges[0]  if edges[0]  < min_x else min_x
         max_x = edges[-1] if edges[-1] > max_x else max_x
@@ -876,7 +888,7 @@ def plot_reweight_result(X, y, nbins, binrange, weights, title = '', xlabel = 'x
             
             plt.sca(ax[i])
             if plot_unweighted:
-                plt.stairs(counts,   edges, fill=False, linewidth = linewidth+0.75, linestyle='--') # bigger linewidth first
+                plt.stairs(counts, edges, fill=False, linewidth = linewidth+0.75, linestyle='--') # bigger linewidth first
             plt.stairs(counts_w, edges, fill=False, linewidth = linewidth, linestyle='-')
             
             if i == 0:
@@ -1103,14 +1115,14 @@ def ROC_plot(metrics, labels, title = '', plot_thresholds=True, \
         ax.set_ylabel('True Positive Rate $1-\\beta$ (signal efficiency)')
         ax.set_title(title, fontsize=10)
         
-        # Legend
-        if len(metrics) > 12: # Put outside the figure
-            plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=legend_fontsize)
-        else:
-            plt.legend(loc='lower right', fontsize=legend_fontsize)
-        
         if k == 0: # Linear-Linear
-
+            
+            # Legend
+            if len(metrics) > 12: # Put outside the figure
+                plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=legend_fontsize)
+            else:
+                plt.legend(loc='lower right', fontsize=legend_fontsize)
+            
             plt.ylim(0.0, 1.0)
             plt.xlim(0.0, 1.0)
             plt.locator_params(axis="x", nbins=11)
@@ -1121,7 +1133,13 @@ def ROC_plot(metrics, labels, title = '', plot_thresholds=True, \
             cprint(__name__ + f'.ROC_plot: Saved: ' + filename + '.pdf','green')
         
         if k == 1: # Log-Linear
-
+            
+            # Legend
+            if len(metrics) > 12: # Put outside the figure
+                plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=legend_fontsize)
+            else:
+                plt.legend(fontsize=legend_fontsize) # Automatic positioning
+            
             plt.ylim(0.0, 1.0)
             plt.xlim(xmin, 1.0)
             plt.locator_params(axis="x", nbins=int(-np.log10(xmin) + 1))
@@ -1358,7 +1376,8 @@ def plot_AIRW(X, y, ids, weights, y_pred, pick_ind,
     
     cprint(f'label = {label} | sublabel = {sublabel} | tau = {tau}', 'green')
     
-    dir = aux.makedir(f'{targetdir}/{label}/{sublabel}')
+    dir       = aux.makedir(f'{targetdir}/{label}/{sublabel}')
+    local_dir = aux.makedir(dir + f'/tau_{tau:0.2f}')
     
     # ---------------------------------------------------
     ## 1. Transform model output scores to AI weights
@@ -1373,7 +1392,8 @@ def plot_AIRW(X, y, ids, weights, y_pred, pick_ind,
     # Handle logits vs probabilities
     min_y_pred, max_y_pred = np.min(y_pred), np.max(y_pred)
     
-    if min_y_pred < 0 or max_y_pred > 1:
+    THRESH = 1E-5
+    if min_y_pred < (-THRESH) or max_y_pred > (1.0 + THRESH):
         print(__name__ + f'.plot_AIRW: Detected raw logit output [{min_y_pred:0.4f}, {max_y_pred:0.4f}] from the model')
         logits = y_pred[y == C0]
         probs  = aux.sigmoid(logits)
@@ -1388,6 +1408,10 @@ def plot_AIRW(X, y, ids, weights, y_pred, pick_ind,
     
     # 2. Get weights after the re-weighting transform
     AIw0 = reweight.rw_transform_with_logits(logits=logits, mode=mode)
+    
+    ## Print stats
+    output_file = f'{local_dir}/stats_AI_weights_raw.log'
+    prints.print_weights(weights=AIw0, y=np.zeros(len(AIw0)), output_file=output_file)
     
     # 3. Cut-off regularize anomalous high weights before event weights
     AIw0 = np.clip(AIw0, a_min=0.0, a_max=maxW)
@@ -1411,6 +1435,10 @@ def plot_AIRW(X, y, ids, weights, y_pred, pick_ind,
         print(f'Sum after:  {sum_after:0.1f} (after / before = {sum_after/sum_before:0.2f})')
         print('')
     
+    # Print stats
+    output_file = f'{local_dir}/stats_AI_weights_final.log'
+    prints.print_weights(weights=AIw0, y=np.zeros(len(AIw0)), output_file=output_file)
+    
     # ===================================================
     # Visualization
     # ---------------------------------------------------
@@ -1419,7 +1447,6 @@ def plot_AIRW(X, y, ids, weights, y_pred, pick_ind,
     total_chi2    = 0.0
     total_chi2_AI = 0.0
     
-    local_dir     = aux.makedir(dir + f'/tau_{tau:0.2f}')
     chi2_table    = PrettyTable(["observable", "ndf", "chi2 / ndf", "(AI) chi2 / ndf"]) 
     
     # ---------------------------------------------------

@@ -70,7 +70,7 @@ xgb0:
   
   # booster parameters
   model_param:
-    num_boost_round: 400        # number of epochs (equal to the number of trees!)
+    num_boost_round: 500        # number of epochs (equal to the number of trees!)
     
     booster: 'gbtree'           # 'gbtree' (default), 'dart' (dropout boosting)
     tree_method: 'hist'
@@ -115,7 +115,7 @@ iceboost0:
   
   # booster parameters
   model_param:
-    num_boost_round: 400        # number of epochs (equal to the number of trees!)
+    num_boost_round: 500        # number of epochs (equal to the number of trees!)
     
     booster: 'gbtree'           # 'gbtree' (default), 'dart' (dropout boosting)
     tree_method: 'hist'
@@ -167,7 +167,7 @@ iceboost_plus:
   
   # booster parameters
   model_param:
-    num_boost_round: 400        # number of epochs (equal to the number of trees!)
+    num_boost_round: 500        # number of epochs (equal to the number of trees!)
     
     booster: 'gbtree'           # 'gbtree' (default), 'dart' (dropout boosting)
     tree_method: 'hist'
@@ -218,10 +218,14 @@ iceboost_plus:
   evalmode: 25                  # Every n-th epoch (integer), evaluation done also for every n-th
   readmode: -1                  # -1 is the last saved epoch
 
+# -----------------------------------------------------------------------------
+# Remember to use 'zscore-weighted' (or 'zscore') typically with Neural Networks,
+# however, performance with BDTs may be better without.
+# -----------------------------------------------------------------------------
 
 ## Lipschitz MLP
 #
-lzmlp0:
+lzmlp0: &LZMLP
   train:   'torch_generic'
   predict: 'torch_scalar'
   raw_logit: true               # Return raw logits
@@ -238,12 +242,12 @@ lzmlp0:
   out_dim: 1   # We want to use sigmoid 1D-output model, comment out for default softmax multiclass
 
   model_param:
-    mlp_dim: [64, 64, 64]             # hidden layer dimensions
-    activation: 'relu'
-    batch_norm: False                 # batch_norm & dropout can be ill-posed here (operators not 1-to-1 compatible with weighted events)
+    mlp_dim: [64, 64, 64, 64]         # hidden layer dimensions
+    activation: 'silu'
+    layer_norm: True
+    batch_norm: False                 # normalization layers & dropout can be ill-posed here (operators not 1-to-1 compatible with weighted events)
     dropout: 0
-    last_tanh: True                   # Extra tanh layer
-    last_tanh_scale: 10.0             # Scale after tanh()
+    act_after_norm: True
   
   # Optimization
   opt_param:  
@@ -269,7 +273,7 @@ lzmlp0:
     gamma: 0.1
   
   device: 'auto'               # alternative 'cpu:0', 'cuda:0'
-  num_workers: 16
+  num_workers: 4
   
   # Read/Write of epochs
   evalmode: 10                 # Every n-th epoch (integer), evaluation done also for every n-th
@@ -278,9 +282,22 @@ lzmlp0:
   eval_batch_size: 4096
 
 
+## Lipschitz MLP
+#
+lzmlp0_nozero:
+
+  <<: *LZMLP
+
+  # ** Custom set of variables **
+  #include_MVA_vars: ['.*']
+  exclude_MVA_vars: ['probe_pfChargedIso', 'probe_ecalPFClusterIso', 'probe_trkSumPtHollowConeDR03', 'probe_trkSumPtSolidConeDR04']
+  
+  label:   'LZMLP-NOZERO'
+
+
 ## FastKAN
 #
-fastkan0:
+fastkan0: &FASTKAN
   train:   'torch_generic'
   predict: 'torch_scalar'
   raw_logit: true               # Return raw logits
@@ -300,7 +317,7 @@ fastkan0:
     grid_min: -2.0                    # Activation learning param
     grid_max:  2.0                    # 
     num_grids:   8                    # 
-    mlp_dim: [128, 128 ,128]          # hidden layer dimensions
+    mlp_dim: [64, 64, 64]             # hidden layer dimensions
     use_base_update: True             # Use "base MLP" in addition
     
     last_tanh: True                   # Extra tanh layer
@@ -330,7 +347,7 @@ fastkan0:
     gamma: 0.1
   
   device: 'auto'               # alternative 'cpu:0', 'cuda:0'
-  num_workers: 16
+  num_workers: 4
   
   # Read/Write of epochs
   evalmode: 10                 # Every n-th epoch (integer), evaluation done also for every n-th
@@ -338,10 +355,26 @@ fastkan0:
   
   eval_batch_size: 4096
 
+  # Deploy (or test) mode device
+  deploy_device: 'cpu'        # 'auto', 'cpu', 'cuda'
+
+
+## FastKAN
+#
+fastkan0_nozero:
+
+  <<: *FASTKAN
+  
+  # ** Custom set of variables **
+  #include_MVA_vars: ['.*']
+  exclude_MVA_vars: ['probe_pfChargedIso', 'probe_ecalPFClusterIso', 'probe_trkSumPtHollowConeDR03', 'probe_trkSumPtSolidConeDR04']
+  
+  label:   'FASTKAN-NOZERO'
+
 
 ## Deep MLP
 #
-dmlp0:
+dmlp0: &DMLP
   train:   'torch_generic'
   predict: 'torch_scalar'
   raw_logit: true               # Return raw logits
@@ -356,15 +389,19 @@ dmlp0:
   # Model
   conv_type: 'dmlp'
   out_dim: 1   # We want to use sigmoid 1D-output model, comment out for default softmax multiclass
-
+  
   model_param:
-    mlp_dim: [64, 64, 64]             # hidden layer dimensions
-    activation: 'relu'
-    batch_norm: False                 # batch_norm & dropout can be ill-posed here (operators not 1-to-1 compatible with weighted events)
+    mlp_dim: [64, 64, 64, 64]         # hidden layer dimensions
+    activation: 'silu'
+    layer_norm: True
+    batch_norm: False                 # normalization layers & dropout can be ill-posed here (operators not 1-to-1 compatible with weighted events)
     dropout: 0
+    act_after_norm: True
+    
+    skip_connections: False
     last_tanh: True                   # Extra tanh layer
     last_tanh_scale: 10.0             # Scale after tanh()
-  
+
   # Optimization
   opt_param:  
     lossfunc: 'binary_cross_entropy'  # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
@@ -388,10 +425,23 @@ dmlp0:
     gamma: 0.1
   
   device: 'auto'               # alternative 'cpu:0', 'cuda:0'
-  num_workers: 16
+  num_workers: 4
   
   # Read/Write of epochs
   evalmode: 10                 # Every n-th epoch (integer), evaluation done also for every n-th
   readmode: -1                 # -1 is the last saved epoch
   
   eval_batch_size: 4096
+
+
+## Deep MLP
+#
+dmlp0_nozero:
+
+  <<: *DMLP
+
+  # ** Custom set of variables **
+  #include_MVA_vars: ['.*']
+  exclude_MVA_vars: ['probe_pfChargedIso', 'probe_ecalPFClusterIso', 'probe_trkSumPtHollowConeDR03', 'probe_trkSumPtSolidConeDR04']
+  
+  label:   'DMLP-NOZERO'
