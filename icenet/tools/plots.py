@@ -8,7 +8,7 @@ import awkward as ak
 import torch
 import gc
 from pprint import pprint
-from termcolor import colored, cprint
+from termcolor import cprint
 import copy
 from prettytable import PrettyTable
 import multiprocessing
@@ -166,7 +166,8 @@ def plot_matrix(XY, x_bins, y_bins, vmin=0, vmax=None, cmap='RdBu', figsize=(4,3
     return fig,ax,c
 
 
-def plot_train_evolution_multi(losses, trn_aucs, val_aucs, label, aspect=0.85):
+def plot_train_evolution_multi(losses, trn_aucs, val_aucs, label, aspect=0.85,
+                               yscale='linear', xscale='linear'):
     """ Training evolution plots.
 
     Args:
@@ -189,7 +190,8 @@ def plot_train_evolution_multi(losses, trn_aucs, val_aucs, label, aspect=0.85):
     
     for key in losses.keys():
         if ('sum' in key) and (N_terms == 2):
-            continue # Do not plot sum if only sum made of one term
+            continue # Do not plot 'sum' if only sum made of one term
+        
         ax[0].plot(losses[key], label=key)
     
     ax[0].set_xlabel('k (epoch)')
@@ -199,6 +201,8 @@ def plot_train_evolution_multi(losses, trn_aucs, val_aucs, label, aspect=0.85):
     
     plt.sca(ax[0])
     plt.autoscale(enable=True, axis='x', tight=True)
+    plt.yscale(yscale)
+    plt.xscale(xscale)
     
     ax[1].plot(trn_aucs)
     ax[1].plot(val_aucs)
@@ -209,9 +213,11 @@ def plot_train_evolution_multi(losses, trn_aucs, val_aucs, label, aspect=0.85):
     
     plt.sca(ax[1])
     plt.autoscale(enable=True, axis='x', tight=True)
+    plt.yscale(yscale)
+    plt.xscale(xscale)
     
     ax[0].set_aspect(1.0/ax[0].get_data_ratio()*aspect)
-
+    
     for i in [1]:
         ax[1].set_ylim([np.min([np.min(trn_aucs), np.min(val_aucs)]), 1.0])
         ax[1].set_aspect(1.0/ax[i].get_data_ratio()*aspect)
@@ -1342,7 +1348,7 @@ def plot_xgb_importance(model, tick_label, importance_type='gain', label=None, s
         s_ind  = np.array(np.argsort(yy), dtype=int)
         yy     = yy[s_ind]
         labels = [labels[i] for i in s_ind]
-
+    
     # Plot
     fig,ax = plt.subplots(figsize=(0.5 * (np.ceil(dim/6) + 2), np.ceil(dim/6) + 2))
     plt.barh(xx, yy, align='center', height=0.5, tick_label=labels)
@@ -1414,7 +1420,7 @@ def plot_AIRW(X, y, ids, weights, y_pred, pick_ind,
     prints.print_weights(weights=AIw0, y=np.zeros(len(AIw0)), output_file=output_file)
     
     # 3. Cut-off regularize anomalous high weights before event weights
-    AIw0 = np.clip(AIw0, a_min=0.0, a_max=maxW)
+    AIw0 = np.clip(AIw0, 0.0, maxW)
     
     # 4. Apply multiplicatively to event weights (which can be negative)
     AIw0 = AIw0 * weights[y == C0]
@@ -1504,7 +1510,7 @@ def plot_AIRW(X, y, ids, weights, y_pred, pick_ind,
     chi2_table.add_row(['total', f'{total_ndf}', f'{total_chi2/total_ndf:0.1f}', f'{total_chi2_AI/total_ndf:0.1f}'])
     
     # -----------------------------------------------
-    filename = local_dir + f"/chi2.log"
+    filename = local_dir + f"/stats_chi2.log"
     open(filename, 'w').close() # Clear content
     table_writer(filename=filename, label=label, sublabel=sublabel, tau=tau, chi2_table=chi2_table, print_to_screen=True)
     # -----------------------------------------------
@@ -1614,11 +1620,11 @@ def multiprocess_AIRW_wrapper(p):
     fig0, ax0 = iceplot.superplot(data, ratio_plot=True, yscale='log', ratio_error_plot=True)
     fig1, ax1 = iceplot.superplot(data, ratio_plot=True, yscale='linear', ratio_error_plot=True)
     
-    fig0.savefig(aux.makedir(local_dir) + f'/reweight_[{ids[i]}]__log.pdf', bbox_inches='tight')
-    fig0.savefig(aux.makedir(local_dir) + f'/reweight_[{ids[i]}]__log.png', bbox_inches='tight', dpi=300)
+    fig0.savefig(aux.makedir(local_dir + '/pdf/') + f'/reweight_[{ids[i]}]__log.pdf', bbox_inches='tight')
+    fig0.savefig(aux.makedir(local_dir + '/png/') + f'/reweight_[{ids[i]}]__log.png', bbox_inches='tight', dpi=300)
     
-    fig1.savefig(aux.makedir(local_dir) + f'/reweight_[{ids[i]}]__linear.pdf', bbox_inches='tight')
-    fig1.savefig(aux.makedir(local_dir) + f'/reweight_[{ids[i]}]__linear.png', bbox_inches='tight', dpi=300)
+    fig1.savefig(aux.makedir(local_dir + '/pdf/') + f'/reweight_[{ids[i]}]__linear.pdf', bbox_inches='tight')
+    fig1.savefig(aux.makedir(local_dir + '/png/') + f'/reweight_[{ids[i]}]__linear.png', bbox_inches='tight', dpi=300)
     
     fig0.clf()
     fig1.clf()

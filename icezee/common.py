@@ -71,29 +71,23 @@ def load_root_file(root_path, ids=None, entry_start=0, entry_stop=None, maxevent
     
     X_MC = frame_mc[LOAD_VARS].to_numpy()
     
-    ## Pre-computed weights (kinematic re-weight x gen event weight x ...)
-    """
-    W_MC    = frame_mc[['weight']].to_numpy().squeeze()
-    W_MC_rw = frame_mc[['rw_weights']].to_numpy().squeeze()
-    W_MC    = W_MC / W_MC_rw # Extract out raw "gen" weights
-    W_MC    = W_MC / np.sum(W_MC) * len(W_MC)
-    """
-    
-    # Use all events with weight 1
-    W_MC = np.ones(len(X_MC))
-    
     # Label = 0
     Y_MC = np.zeros(len(X_MC)).astype(int)
     
+    ## Pre-computed weights (gen event weight x CMS weights)
+    W_MC = frame_mc[['weight']].to_numpy().squeeze()
+    
     # ** Drop negative weight events **
-    """
     ind  = W_MC < 0
     if np.sum(ind) > 0:
         cprint(__name__ + f'.load_root_file: Dropping negative weight events ({np.sum(ind)/len(ind):0.3f})', 'red')
         W_MC = W_MC[~ind] # Boolean NOT
         X_MC = X_MC[~ind]
         Y_MC = Y_MC[~ind]
-    """
+    
+    # Renormalize to the event count
+    W_MC = W_MC / np.sum(W_MC) * len(W_MC)
+    
     
     print(f'X_MC.shape = {X_MC.shape}')
     print(f'W_MC.shape = {W_MC.shape}')
@@ -220,15 +214,12 @@ def splitfactor(x, y, w, ids, args):
     
     # -------------------------------------------------------------------------
     ### ** DEBUG TEST -- special transform for "zero-inflated" variables **
-    """
+    
     special_var = ['probe_esEffSigmaRR',
                    'probe_pfChargedIso',
                    'probe_ecalPFClusterIso',
                    'probe_trkSumPtHollowConeDR03',
                    'probe_trkSumPtSolidConeDR04']
-    
-    # Thresholds
-    dT          = [0.1, 0.1, 0.1, 0.1, 0.1]
     
     for i, v in enumerate(special_var):
         
@@ -236,16 +227,15 @@ def splitfactor(x, y, w, ids, args):
             ind = data.find_ind(v)
         except:
             cprint(__name__ + f'.splitfactor: Could not find variable "{v}" -- continue', 'red')
+            continue
         
-        cprint(__name__ + f'.splitfactor: Pre-transforming variable "{v}" with dT < {dT[i]}', 'magenta')
+        cprint(__name__ + f'.splitfactor: Pre-transforming variable "{v}" with log1p', 'magenta')
         
-        mask              = np.abs(data.x[:,ind] < dT[i])
-        data.x[mask, ind] = np.random.triangular(left=-1, mode=-0.75, right=dT[i], size=np.sum(mask))
-        data.x[:,ind]     = np.log1p(data.x[:,ind] + 1)
+        data.x[:,ind] = np.log1p(data.x[:,ind])
         
         # Change the variable name
         data.ids[ind] = f'DQL__{v}'
-    """
+    
     # -------------------------------------------------------------------------
     
     return {'data': data, 'data_MI': data_MI, 'data_kin': data_kin, 'data_deps': data_deps, 'data_tensor': data_tensor, 'data_graph': data_graph}

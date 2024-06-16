@@ -58,7 +58,7 @@ train_runmode:
   ## Reweighting setup
   reweight: true
   reweight_mode: 'write'              # 'write', 'load'
-  reweight_file: 'reweight_train.pkl' # differential reweighting model file
+  reweight_file: null                 # null for automatic, or string for specific
   
   reweight_param: &REWEIGHT_PARAM
 
@@ -69,9 +69,11 @@ train_runmode:
     # Differential reweighting param
     diff_param:
       
-      maxevents: null                      # Maximum number of events for the PDF construction
+      maxevents: null                   # Maximum number of events for the PDF construction
+      renorm_weight_to_count: True      # Renormalize sum(weights) == sum(counts) per class
+      
       var:  ['probe_eta', 'probe_pt', 'fixedGridRhoAll']
-      type: 'ML'                           # 'ML', 'pseudo-ND', '2D', '1D'
+      type: 'AIRW'                         # 'AIRW', 'pseudo-ND', '2D', '1D'
       
       hist_param:
 
@@ -85,37 +87,40 @@ train_runmode:
         
         max_reg: 1000.0                    # Maximum weight cut-off regularization
       
-      ML_param:
+      AIRW_param:
         active_model: xgb3Drw              # Under models.yml
         max_reg:      1000.0               # Maximum weight cut-off regularization
+        mode:         'LR'                 # 'LR', 'inverse-LR', 'DeepEfficiency', 'direct'
   
-  
+
   ## Outlier protection in the training
   outlier_param:
     algo: 'truncate'   # algorithm: 'truncate', null
     qmin: 0.01         # in [0,100] 
     qmax: 99.9         # in [0,100]
-    
+
     truncate_weights: True # Truncate outlier event weights
     process_validate: True # Protect also validation sample
   
-
+  
   # ** Activate models here **
   # Give all models some unique identifier and label
   models:  !include configs/zee/models.yml
   active_models: &ACTIVE_MODELS
 
-    - lzmlp0_nozero
-    - dmlp0_nozero
-    - fastkan0_nozero
+    - dbnf0
     
-    - lzmlp0
-    - dmlp0
-    - fastkan0
+    #- lzmlp0_nozero
+    #- dmlp0_nozero
+    #- fastkan0_nozero
     
-    - iceboost_plus
-    - iceboost0
-    - xgb0
+    #- lzmlp0
+    #- dmlp0
+    #- fastkan0
+    
+    #- iceboost_plus
+    #- iceboost0
+    #- xgb0
   
   raytune: !include configs/zee/raytune.yml
 
@@ -148,8 +153,8 @@ eval_runmode:
   
   reweight: true
   reweight_mode: 'load'          # 'write', 'load'
-  reweight_file: 'reweight_train.pkl'
-
+  reweight_file: null                 # null for automatic, or string for specific
+  
   reweight_param: *REWEIGHT_PARAM
 
   models:  !include configs/zee/models.yml

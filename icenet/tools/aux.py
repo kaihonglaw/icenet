@@ -7,33 +7,34 @@ import numpy as np
 import awkward as ak
 import re
 import time
-import datetime
-import torch
-
-import numba
-import copy
-from tqdm import tqdm
+import pickle
 import os
 import glob
+import torch
+from datetime import datetime
+
+import numba
+from tqdm import tqdm
 from termcolor import cprint
 
 import sklearn
 from sklearn import metrics
 import scipy
-from scipy import stats
-import scipy.special as special
 from scipy import interpolate
 
-from icefit import statstools
+
+def get_datetime():
+    """
+    Return datetime string of style '2024-06-04--14-45-07'
+    """
+    return str(datetime.now()).replace(' ', '_').replace(':','-').split('.')[0]
 
 def inverse_sigmoid(p: np.ndarray, EPS=1E-9):
     """
     Stable inverse sigmoid function
     """
-    x = np.clip(p, EPS, 1.0 - EPS) 
-    p[~np.isfinite(p)] = EPS
-    
-    return np.log(x) - np.log(1 - x)
+    # log(p) - log(1-p)
+    return np.log(np.clip(p, EPS, 1.0-EPS)) - np.log(np.clip(1-p, EPS, 1.0-EPS))
 
 def _positive_sigmoid(x: np.ndarray):
     return 1 / (1 + np.exp(-x))
@@ -258,7 +259,7 @@ def parse_vars(items):
     return d
 
 
-def ak2numpy(x, fields, null_value=float(-999.0), dtype='float32'):
+def ak2numpy(x: ak.Array, fields: list, null_value=float(-999.0), dtype='float32'):
     """
     Unzip awkward array to numpy array per column (awkward Record)
     
@@ -877,21 +878,59 @@ def getmtime(filename):
 def create_model_filename(path: str, label: str, filetype='.dat', epoch:int=None):
     """
     Create model filename
+    
+    This function automatically takes the minimum validation loss epoch / iteration,
+    if epoch == - 1, by first reading the last epoch / iteration file.
     """
     def createfilename(i):
         return f'{path}/{label}_{i}{filetype}'
     
     if epoch is None or epoch == -1:
         cprint(__name__ + f'.create_model_filename: Loading the latest model by timestamp', 'yellow')
-        
+
         list_of_files = glob.glob(f'{path}/{label}_*{filetype}')
-        filename      = max(list_of_files, key=os.path.getctime)
+        
+        if len(list_of_files) == 0:
+            raise Exception(__name__ + f'.create_model_filename: Could not find any files for model "{label}"')
+        
+        # Latest model
+        filename = max(list_of_files, key=os.path.getctime)
+        
+        # ----------------------------------------------------
+        # Try to find the best model
+        succeeded = False
+        try:
+            # Try with pickle load
+            with open(filename, 'rb') as file:
+                data  = pickle.load(file)
+            succeeded = True
+            
+        except:
+            # Try with torch load
+            try:
+                data = torch.load(filename, map_location = 'cpu')
+                succeeded = True
+            
+            except Exception as e:
+                print(e)
+                cprint(__name__ + f'.create_model_filename: Problem in finding the model [{label}] with the minimum validation loss', 'red')
+        
+        if succeeded:
+            # Take the minimum validation loss epoch index
+            losses = np.array(data['losses']['val_losses'])
+            idx    = np.argmin(losses)
+            
+            str = f'Found the best model at epoch [{idx}] with validation loss = {losses[idx]:0.4f}'
+            cprint(__name__ + f'.create_model_filename: {str}', 'magenta')
+            
+            filename = createfilename(idx)
+        # ----------------------------------------------------
+        
     else:
         cprint(__name__ + f'.create_model_filename: Loading the model with the provided epoch = {epoch}', 'yellow')
-        
         filename = createfilename(epoch)
     
-    dt = datetime.datetime.fromtimestamp(getmtime(filename))
+    dt = datetime.fromtimestamp(getmtime(filename))
     cprint(__name__ + f'.create_model_filename: Found a model file: {filename} (modified {dt})', 'green')
     
     return filename
@@ -1094,8 +1133,8 @@ def sort_fpr_tpr(fpr, tpr):
     """
     For numerical stability with negative weighted events
     """
-    fpr = np.clip(fpr, a_min=0.0, a_max=1.0)
-    tpr = np.clip(tpr, a_min=0.0, a_max=1.0)
+    fpr = np.clip(fpr, 0.0, 1.0)
+    tpr = np.clip(tpr, 0.0, 1.0)
     
     sorted_index = np.argsort(fpr) # x-axis needs to be monotonic
     fpr_sorted   = np.array(fpr)[sorted_index]
@@ -1119,7 +1158,7 @@ def auc_score(fpr, tpr):
     """
     auc = scipy.integrate.trapz(y=tpr, x=fpr)
 
-    return np.clip(auc, a_min=0.0, a_max=1.0)
+    return np.clip(auc, 0.0, 1.0)
 
 
 def compute_metrics(class_ids, y_true, y_pred, weights):

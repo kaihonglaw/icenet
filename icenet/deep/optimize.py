@@ -112,12 +112,15 @@ def batch2tensor(batch, device):
 
 def printloss(loss, precision=5):
     """
-    Loss string printer
+    Loss torch string printer
     """
     out = ''
     loss_keys = loss.keys()
     for i,key in enumerate(loss_keys):
-        out += f'{key}: {np.round(loss[key], precision)}'
+        if type(loss[key]) is float:
+            out += f'{key}: {np.round(loss[key], precision)}'
+        else:
+            out += f'{key}: {np.round(loss[key].item(), precision)}'
         if i < len(loss_keys) - 1:
             out += ', '
     return out
@@ -287,12 +290,11 @@ def train(model, loader, optimizer, device, opt_param, MI=None):
     return {'sum': total_loss, **component_losses}
 
 
-def test(name, model, loader, device, opt_param, MI=None, compute_loss=False):
+def test(model, loader, device, opt_param, MI=None, compute_loss=False):
     """
     Pytorch based testing routine.
     
     Args:
-        name      : 'test' or 'validate', for example
         model     : pytorch geometric model
         loader    : pytorch geometric dataloader
         device    : 'cpu' or 'device'
@@ -333,8 +335,8 @@ def test(name, model, loader, device, opt_param, MI=None, compute_loss=False):
                 ## Create combined loss
                 loss = 0
                 for key in loss_tuple.keys():
-                    loss = loss + loss_tuple[key]
-
+                    loss = loss + loss_tuple[key].item()
+                
                 for key in loss_tuple.keys():
                     if key in component_losses:
                         component_losses[key] += loss_tuple[key].item()
@@ -342,7 +344,7 @@ def test(name, model, loader, device, opt_param, MI=None, compute_loss=False):
                         component_losses[key]  = loss_tuple[key].item()
 
                 ## Aggregate losses
-                total_loss = total_loss + loss.item()
+                total_loss = total_loss + loss
 
                 n_batches += 1
             
@@ -367,22 +369,14 @@ def test(name, model, loader, device, opt_param, MI=None, compute_loss=False):
     
     # Normalize
     if compute_loss:
-            
         total_loss /= n_batches
-
         for key in component_losses.keys():
             component_losses[key] /= n_batches
     
-    # Change names
-    old_keys = copy.deepcopy(list(component_losses.keys()))
-    for key in old_keys:
-        component_losses[f'{key} ({name})'] = copy.deepcopy(component_losses[key])
-        component_losses.pop(key)
-    
     if k > 0:
-        return {f'sum ({name})': total_loss, **component_losses}, accsum / k, aucsum / k
+        return {f'sum': total_loss, **component_losses}, accsum / k, aucsum / k
     else:
-        return {f'sum ({name})': total_loss, **component_losses}, accsum, aucsum
+        return {f'sum': total_loss, **component_losses}, accsum, aucsum
 
 
 def model_to_cuda(model, device_type='auto'):

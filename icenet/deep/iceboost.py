@@ -170,7 +170,7 @@ def _binary_cross_entropy(preds: torch.Tensor, targets: torch.Tensor, weights: t
     if loss_mode == 'eval':
         
         ts = tempscale.LogitsWithTemperature(mode='binary', device=device)
-        ts.set_temperature(logits=preds, labels=targets.to(torch.float32), weights=weights)
+        ts.set_temperature(logits=preds, labels=targets.to(torch.float32), weights=w)
     
     # --------------------------------------------------------------------
     ## MI Regularization
@@ -299,7 +299,7 @@ def _binary_cross_entropy(preds: torch.Tensor, targets: torch.Tensor, weights: t
     track_loss['sum'] = total_loss.item()
     
     # Print
-    loss_str = f'Loss[{loss_mode}]: sum: {track_loss["sum"]:0.5f} | ' + loss_str
+    loss_str = f'Loss[{loss_mode}]: sum: {total_loss.item():0.5f} | ' + loss_str
     cprint(loss_str, 'yellow')
     # --------------------------------------------------------------------
     
@@ -376,6 +376,12 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
     loss_history_train = {}
     loss_history_eval  = {}
 
+    # TensorboardX
+    if not args['__raytune_running__'] and param['tensorboard']:
+        from tensorboardX import SummaryWriter
+        writer = SummaryWriter(os.path.join(args['modeldir'], param['label']))
+    
+    
     if 'BCE_param' in param:
         
         BCE_param = {}
@@ -418,7 +424,7 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
         print(__name__ + f'.train_xgb: Negative weights in the sample -- handled via custom loss')
         out_weights_on = True
         
-        if use_custom:
+        if not use_custom:
             raise Exception(__name__ + f'.train_xgb: Need to use custom with negative weights, e.g. "custom:binary_cross_entropy". Change your parameters.')
     else:
         out_weights_on = False
@@ -449,14 +455,14 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
     X_trn, ids_trn = aux.red(X=data_trn.x, ids=data_trn.ids, param=param, verbose=True)  # variable reduction
     X_val, ids_val = aux.red(X=data_val.x, ids=data_val.ids, param=param, verbose=False) # variable reduction
     
-    for epoch in range(1, num_epochs+1):
-
+    for epoch in range(0, num_epochs):
+        
         # Create input xgboost frames
         dtrain = xgboost.DMatrix(data=X_trn, label = data_trn.y if y_soft is None else y_soft, weight = w_trn if not out_weights_on else None, feature_names=ids_trn)    
         deval  = xgboost.DMatrix(data=X_val, label = data_val.y,  weight = w_val if not out_weights_on else None, feature_names=ids_val)
         
         ## What to evaluate
-        if epoch == 1 or (epoch % param['evalmode']) == 0 or args['__raytune_running__']:
+        if epoch == 0 or (epoch % param['evalmode']) == 0 or args['__raytune_running__']:
             evallist = [(dtrain, 'train'), (deval, 'eval')]
         else:
             evallist = [(dtrain, 'train')]
@@ -502,9 +508,9 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
             del a['params']['objective']
         # -----------------
 
-        if epoch > 1: # Continue from the previous epoch model
+        if epoch > 0: # Continue from the previous epoch model
             a['xgb_model'] = model
-
+        
         if out_weights_on:
             out_weights = copy.deepcopy(w_trn)
 
@@ -517,7 +523,7 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
         
         # ==============================================
         ## Validate
-        if epoch == 1 or (epoch % param['evalmode']) == 0 or args['__raytune_running__']:
+        if epoch == 0 or (epoch % param['evalmode']) == 0 or args['__raytune_running__']:
             
             # ------- AUC values ------
             if len(args['primary_classes']) >= 2:
@@ -563,16 +569,36 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
             val_aucs.append(metrics_eval.auc)
         # ==============================================
         
+        if not args['__raytune_running__'] and param['tensorboard']:
+            #writer.add_scalar('lr', scheduler.get_last_lr()[0], epoch)
+            writer.add_scalar('loss/validation', val_losses[-1], epoch)
+            writer.add_scalar('loss/train',      trn_losses[-1], epoch)
+            writer.add_scalar('AUC/validation',  val_aucs[-1],   epoch)
+            writer.add_scalar('AUC/train',       trn_aucs[-1],   epoch)
+        
         print(__name__ + f'.train_xgb [{param["label"]}] Tree {epoch:03d}/{num_epochs:03d} | Train: loss = {trn_losses[-1]:0.4f}, AUC = {trn_aucs[-1]:0.4f} | Eval: loss = {val_losses[-1]:0.4f}, AUC = {val_aucs[-1]:0.4f}')
         
         if not args['__raytune_running__']:
             
             ## Save the model
-            filename = args['modeldir'] + f'/{param["label"]}_{epoch}'
-            pickle.dump(model, open(filename + '.dat', 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+            savedir  = aux.makedir(f'{args["modeldir"]}/{param["label"]}')
+            filename = f'{savedir}/{param["label"]}_{epoch}'
+            
             model.save_model(filename + '.json')
             model.dump_model(filename + '.text', dump_format='text')
 
+            losses = {'trn_losses':         trn_losses,
+                      'val_losses':         val_losses,
+                      'trn_aucs':           trn_aucs,
+                      'val_aucs:':          val_aucs,
+                      'loss_history_train': loss_history_train,
+                      'loss_history_eval':  loss_history_eval}
+            
+            with open(filename + '.pkl', 'wb') as file:
+                data = {'model': model, 'ids': ids_trn, 'losses': losses, 'epoch': epoch}
+                pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    
     # Report only once after all boost iterations
     # otherwise early stopping may happen due to scheduler as with neural net epochs
     if args['__raytune_running__']:
@@ -580,24 +606,30 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
         #    path = os.path.join(checkpoint_dir, "checkpoint")
         #    pickle.dump(model, open(path, 'wb'))
         ray.train.report({'loss': trn_losses[-1], 'AUC': val_aucs[-1]})
-
+    
+    
     if not args['__raytune_running__']:
         
         # Plot evolution
-        plotdir  = aux.makedir(f'{args["plotdir"]}/train/loss')
+        plotdir = aux.makedir(f'{args["plotdir"]}/train/loss/{param["label"]}')
         
         if use_custom:
             ltr = {f'train: {k}': v for k, v in loss_history_train.items()}
             lev = {f'eval:  {k}': v for k, v in loss_history_eval.items()}
-            
-            fig,ax = plots.plot_train_evolution_multi(losses=ltr | lev, trn_aucs=trn_aucs, val_aucs=val_aucs, label=param["label"])
+
+            losses_ = ltr | lev
         
-        # Standard
         else:
-            fig,ax = plots.plot_train_evolution_multi(losses={'train': trn_losses, 'eval': val_losses},
-                trn_aucs=trn_aucs, val_aucs=val_aucs, label=param["label"])
+            losses_ = {'train': trn_losses, 'eval': val_losses}
         
-        plt.savefig(f'{plotdir}/{param["label"]}--evolution.pdf', bbox_inches='tight'); plt.close()
+        for yscale in ['linear', 'log']:
+            for xscale in ['linear', 'log']:
+                
+                fig,ax = plots.plot_train_evolution_multi(losses=losses_, trn_aucs=trn_aucs, val_aucs=val_aucs,
+                                                          label=param["label"], yscale=yscale, xscale=xscale)
+                
+                plt.savefig(f"{plotdir}/{param['label']}_losses_yscale_{yscale}_xscale_{xscale}.pdf", bbox_inches='tight')
+                plt.close(fig)
         
         ## Plot feature importance
         if plot_importance:
@@ -605,20 +637,23 @@ def train_xgb(config={'params': {}}, data_trn=None, data_val=None, y_soft=None, 
                 for importance_type in ['weight', 'gain', 'cover', 'total_gain', 'total_cover']:
                     fig,ax = plots.plot_xgb_importance(model=model, tick_label=ids_trn,
                         label=param["label"], importance_type=importance_type, sort=sort)
-                    targetdir = aux.makedir(f'{args["plotdir"]}/train/xgboost-importance')
+                    targetdir = aux.makedir(f'{args["plotdir"]}/train/xgboost-importance/{param["label"]}')
                     plt.savefig(f'{targetdir}/{param["label"]}--type_{importance_type}--sort-{sort}.pdf', bbox_inches='tight');
-                    plt.close()
+                    plt.close(fig)
         
         ## Plot decision trees
         if ('plot_trees' in param) and param['plot_trees']:
             try:
                 print(__name__ + f'.train_xgb: Plotting decision trees ...')
                 model.feature_names = ids_trn # Make it explicit
+                
+                path = aux.makedir(f'{args["plotdir"]}/train/xgboost-treeviz/{param["label"]}')
+                
                 for i in tqdm(range(num_epochs)):
                     xgboost.plot_tree(model, num_trees=i)
                     fig = plt.gcf(); fig.set_size_inches(60, 20) # Higher reso
-                    path = aux.makedir(f'{targetdir}/trees_{param["label"]}')
-                    plt.savefig(f'{path}/tree-{i}.pdf', bbox_inches='tight'); plt.close()
+                    plt.savefig(f'{path}/tree_{i}.pdf', bbox_inches='tight')
+                    plt.close()
             except:
                 print(__name__ + f'.train_xgb: Could not plot the decision trees (try: conda install python-graphviz)')
         

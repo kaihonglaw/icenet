@@ -61,19 +61,20 @@ def load_torch_checkpoint(path='/', label='mynet', epoch=-1):
     return model
 
 
-def save_torch_model(model, optimizer, epoch, filename):
+def save_torch_model(model, optimizer, epoch, losses, filename):
     """ PyTorch model saver
     """
     def f():
         torch.save({
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
-            'epoch': epoch
+            'epoch': epoch,
+            'losses': losses
         }, (filename))
     return f
 
 
-def load_torch_model(model, optimizer, filename, load_start_epoch = False, device='cpu'):
+def load_torch_model(model, optimizer, filename, device='cpu', param=None, load_start_epoch = False):
     """ PyTorch model loader
     """
     def f():
@@ -82,7 +83,7 @@ def load_torch_model(model, optimizer, filename, load_start_epoch = False, devic
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         
-        if load_start_epoch:
-            param.start_epoch = checkpoint['epoch']
+        if param is not None and load_start_epoch:
+            param['start_epoch'] = checkpoint['epoch']
     
     return f
