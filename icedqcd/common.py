@@ -26,6 +26,12 @@ from icenet import print
 from configs.dqcd.cuts   import *
 from configs.dqcd.filter import *
 
+def phi_phasewrap(phi):
+    """
+    Used for example when phi is deltaphi = phi1 - phi2
+    """
+    return (phi + np.pi) % (2 * np.pi) - np.pi
+
 
 def load_root_file(root_path, ids=None, entry_start=0, entry_stop=None, maxevents=None, args=None):
     """ Loads the root files
@@ -265,11 +271,13 @@ def splitfactor(x, y, w, ids, args, skip_graph=True, use_dequantize=True):
     print(f"Adding custom muonSV variables ...")
     
     ## \DeltaR
+    '''
     data.x['muonSV', 'deltaR'] = \
         analytic.deltaR(x=data.x['muonSV'], eta1='mu1eta', eta2='mu2eta', phi1='mu1phi', phi2='mu2phi')
     jagged_vars.append('muonSV_deltaR')
     muonsv_vars.append('muonSV_deltaR')
-    
+    '''
+
     ## Invariant Mass
     data.x['muonSV', 'mass'] = \
         analytic.invmass(x=data.x['muonSV'], pt1='mu1pt', pt2='mu2pt',
@@ -278,17 +286,37 @@ def splitfactor(x, y, w, ids, args, skip_graph=True, use_dequantize=True):
     
     jagged_vars.append('muonSV_mass')
     muonsv_vars.append('muonSV_mass')
-
-    ## DeltaR between each muon SV and the leading muon SV
-    ## (for the leading muon SV, it is computed w.r.t the origin)
+    
+    
+    ## \DeltaR w.r.t first muon SV
+    '''
     data.x['muonSV', 'SVdeltaR'] = \
         analytic.muonSV_deltaR(X=data.x['muonSV'], x='x', y='y', z='z')
 
     jagged_vars.append('muonSV_SVdeltaR')
     muonsv_vars.append('muonSV_SVdeltaR')
-
-    print(f"muonSV.fields = {data.x['muonSV'].fields}", 'yellow')
     
+    cprint(__name__ + f".splitfactor: muonSV.fields = {data.x['muonSV'].fields}", 'yellow')
+    '''
+    
+    #dRmSV
+    '''
+    dtype = np.float32
+    N_max = 8
+    null_value = -999.0
+    num_of_events = len(data.x['muonSV']['x'])
+
+    dRmSV = np.full((int(num_of_events), int((N_max**2 - N_max)/2)), null_value, dtype=dtype)
+    dRmSV_names = [f"dRmSV_{j}" for j in range(int((N_max**2 - N_max)/2))]
+
+    for i in range(num_of_events):
+        vec = analytic.dRmSV_compute(data.x['muonSV']['x'][i], data.x['muonSV']['y'][i], data.x['muonSV']['z'][i])
+        vec = np.sort(vec)
+        if len(vec) > 28:
+            vec = vec[0:28]
+        dRmSV[i, 0:len(vec)] = vec 
+    '''
+
     # -------------------------------------------------------------------------
     ### Pick kinematic variables out
     data_kin = None
@@ -376,6 +404,11 @@ def splitfactor(x, y, w, ids, args, skip_graph=True, use_dequantize=True):
                         jagged_vars=jagged_vars, jagged_maxdim=args['jagged_maxdim'],
                         null_value=args['imputation_param']['fill_value'])
     io.showmem()
+    
+    
+    #data.x   = np.hstack((data.x, dRmSV))
+    #data.ids = data.ids + dRmSV_names
+    
     
     # -------------------------------------------------------------------------
     # Mutual information regularization targets

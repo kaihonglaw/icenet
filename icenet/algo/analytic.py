@@ -56,14 +56,15 @@ def deltaR(x, eta1: str, eta2: str, phi1: str, phi2: str):
     return np.sqrt(deltaEta**2 + deltaPhi**2)
 
 def muonSV_deltaR(X, x: str, y: str, z: str):
-    """
-    dR between each muon SV and the leading muon SV 
-    (dR w.r.t. the origin for the leading muon SV)
-    """
 
-    muonSV_phi = np.sign(X[y])*np.arccos(X[y]/np.sqrt((X[x])**2 + (X[y])**2))
+    muonSV_phi = np.sign(X[y])*np.arccos(X[x]/np.sqrt((X[x])**2 + (X[y])**2))
     muonSV_theta = np.arccos(X[z]/np.sqrt((X[x])**2 + (X[y])**2+(X[z])**2))
     muonSV_eta = -np.log(np.tan(muonSV_theta/2))
+
+    #Compute dphi and deta between the first two muon SVs
+    #muonSV_dphi = ak.fill_none(ak.pad_none(muonSV_phi[...,1:2],1),0)-ak.fill_none(ak.pad_none(muonSV_phi[...,0:1],1),0)
+    #muonSV_dphi = phi_phasewrap(muonSV_dphi)
+    #muonSV_deta = ak.fill_none(ak.pad_none(muonSV_eta[...,1:2],1),0)-ak.fill_none(ak.pad_none(muonSV_eta[...,0:1],1),0)
 
     muonSV_dphi = []
     muonSV_deta = []
@@ -85,6 +86,26 @@ def muonSV_deltaR(X, x: str, y: str, z: str):
     muonSV_deta = ak.Array(muonSV_deta)
 
     return np.sqrt(muonSV_dphi**2 + muonSV_deta**2)
+
+def dRmSV_compute(x, y, z):
+  
+        N = len(x)
+        deltaR_values = []
+
+        phi = np.sign(y)*np.arccos(x/np.sqrt(x**2 + y**2))
+        theta = np.arccos(z/np.sqrt(x**2 + y**2+ z**2))
+        eta = -np.log(np.tan(theta/2))
+
+        for i in range(N):
+            for j in range(i+1, N):
+                dphi = phi_phasewrap(phi[j] - phi[i])
+                deta = eta[j] - eta[i]
+
+                deltaR_value = np.sqrt(dphi**2 + deta**2)
+
+                deltaR_values.append(deltaR_value)
+  
+        return np.array(deltaR_values)
 
 def fox_wolfram_boost_inv(p, L=10):
     """

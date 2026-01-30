@@ -57,7 +57,8 @@ TRIGGER_VARS = [
 MVA_SCALAR_VARS = [
   'nJet',
   'nMuon',
-  'nsv',
+  'nSV',
+  'nmuonSV',
 
   'MET_pt',
   'MET_phi'

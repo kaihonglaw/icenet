@@ -1027,6 +1027,7 @@ def getmtime(filename):
 
 
 def create_model_filename(path: str, label: str, filetype='.dat', epoch:int=None):
+#def create_model_filename(path, label, epoch, filetype, max_epochs=int(60)):
     """
     Create model filename
     

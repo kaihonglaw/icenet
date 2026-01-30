@@ -38,7 +38,7 @@ def printer(outputfile, process, path, end_name, filename, xs, force_xs, isMC, m
         if isMC == 'true' and m != 'null':
           param_name   = f'm_{m}_ctau_{ctau}_xiO_{xi_pair[0]}_xiL_{xi_pair[1]}'
           process_name = f'{process}_{param_name}'
-          folder_name  = f'{process_name}'
+          folder_name  = f'{process_name}_{end_name}'
         
         # MC background
         elif isMC == 'true' and m == 'null':
@@ -155,7 +155,7 @@ def vector(outputfile, filerange='*'):
   # Basic
   filename        = f'data_{filerange}.root'
   path            = 'bparkProductionAll_V1p3'
-  end_name        = ''
+  end_name        = 'new'
   xs              = '1.0 # [pb]'
   force_xs        = 'true'
   isMC            = 'true'
@@ -266,8 +266,8 @@ def scenarioB1(outputfile, filerange='*'):
   # ------------------------------------------
   
   rp = {}
-  rp['mpi_mA_pair']  = [['1', '0p33'],['2', '0p67'],['2','0p40'],['4','0p80'],['4','1p33']]
-  rp['ctau']         = ['0p1','1p0','10','100']
+  rp['mpi_mA_pair']  = [['1', '0p33'],['2', '0p67'],['2','0p40'],['4','1p33']]
+  rp['ctau']         = ['0p1','0p25','0p3','0p6','1p0','2p5','3p0','6p0','10','30','25p0','60p0','100']
   
   param = {
     'outputfile':      outputfile,

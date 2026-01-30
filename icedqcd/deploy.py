@@ -246,6 +246,7 @@ def process_data(args):
                 
                 # xgb / iceboost
                 if param['predict'] in ['xgb', 'xgb_logistic']:
+                #if param['predict'] == 'xgb' and param['label'] == 'XGB-ONLYMU':
                     
                     print(f'Evaluating MVA-model "{ID}" \n')
 
@@ -261,6 +262,15 @@ def process_data(args):
 
                     ## 3. Get the MVA-model
                     func_predict, model = get_predictor(args=args, param=param, feature_names=ids)
+
+                    '''
+                    print("param = ", param)
+                    print("ids = ", ids)
+                    print("len = ", len(ids))
+                    model.save_model("/vols/cms/khl216/model_ul_saved_scenarioA_ONLYMU.model")
+                    import sys
+                    sys.exit()
+                    '''
 
                     ## 4. ** Conditional model **
                     if args['use_conditional']:

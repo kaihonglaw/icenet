@@ -17,7 +17,29 @@ jobs:
     S: null          # special shell, e.g. '/usr/bin/python'
     m: 'a'           # email (b for begins, a for aborted, e for ends, one can combine e.g. bea)
   
+  dqcd_vector_train_conditional:
+
+    cwd: 'tests/runme_dqcd_vector_train_DA_Kai_conditional.sh'
+    t: null
+    h_vmem: null
+    h_rt: '24:00:00'
+    q: 'gpu.q@lxcgpu*'
+    pe: null
+    S: null
+    m: 'a'
+
   dqcd_vector_train:
+
+    cwd: 'tests/runme_dqcd_vector_train_DA_Kai.sh'
+    t: null
+    h_vmem: null
+    h_rt: '24:00:00'
+    q: 'gpu.q@lxcgpu*'
+    pe: null
+    S: null
+    m: 'a'
+  
+  dqcd_vector_train_no_DA:
 
     cwd: 'tests/runme_dqcd_vector_train.sh'
     t: null

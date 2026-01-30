@@ -850,7 +850,9 @@ def plotvar(x, y, var, weights, nbins=70, percentile_range=[0.5, 99.5],
     """
     try:
         binrange = (np.percentile(x, percentile_range[0]), np.percentile(x, percentile_range[1]))
-        
+        if var == "MET_phi":
+            binrange = (0.0, np.percentile(x, percentile_range[1]))
+
         fig, axs = plot_reweight_result(X=x, y=y, nbins=nbins, binrange=binrange, weights=weights,
                                         title=title, xlabel=var, plot_unweighted=plot_unweighted)
         plt.savefig(f'{targetdir}/var-{var}.pdf', bbox_inches='tight')    
@@ -907,16 +909,25 @@ def plot_reweight_result(X, y, nbins, binrange, weights, title = '', xlabel = 'x
             if i == 0:
                 if plot_unweighted:
                     legends.append(f'$\\mathcal{{C}} = {c}$ (unweighted)')
-                legends.append(f'$\\mathcal{{C}} = {c}$ [$\\mu={mu:0.2f}, \\sigma={std:0.2f}$]')
-    
-    ax[0].set_ylabel('[weighted] counts')
-    ax[0].set_xlabel(xlabel)
+                #legends.append(f'$\\mathcal{{C}} = {c}$ [$\\mu={mu:0.2f}, \\sigma={std:0.2f}$]')
+                if c == 1:
+                    legends.append(f'Signal')
+                if c == 0:
+                    legends.append(f'QCD background')
+                if c == -2:
+                    legends.append(f'Data')
+
+
+    #ax[0].set_ylabel('[weighted] counts', fontsize=12)
+    #ax[0].set_ylabel('Number of events (weighted)', fontsize=12)
+    ax[0].set_xlabel(xlabel, fontsize=12)
     ax[0].set_ylim([0,None])
     ax[0].set_xlim([min_x, max_x])
     
-    ax[1].set_xlabel(xlabel)
-    ax[1].set_title(title, fontsize=10)
-    ax[1].legend(legends, fontsize=8)
+    ax[1].set_xlabel(xlabel, fontsize=12)
+    ax[1].set_ylabel('Number of events (weighted)', fontsize=12)
+    ax[1].set_title(title, fontsize=12)
+    ax[1].legend(legends, fontsize=12)
     ax[1].set_yscale('log')
     plt.tight_layout()
     

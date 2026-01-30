@@ -22,10 +22,10 @@ mva_param: &MVA_INPUT_PARAM
   # The variable names below need to match the nanoAOD variable names, e.g. 'Jet_*'
   jagged_maxdim:
     
-    Jet:  6
-    Muon: 10
-    muonSV: 12
-    SV:   6
+    Jet:  8
+    Muon: 8
+    muonSV: 8
+    SV:   8
     cpf:  0     # 20
     npf:  0     # 10
   
@@ -158,16 +158,23 @@ train_runmode:
     #- gnet2
     #- gnet3
     
-    - iceboost01
-    - iceboost01-NOJETS
-    - iceboost01-MI
-    - iceboost01-DA
-    - iceboost01-DA-NC
-    - iceboost01-DA-NOJETS
-    - iceboost01-DA-MI
-    - iceboost01-DA-MI-NOJETS
+    #- iceboost01
+    #- iceboost01-NOJETS
+    #- iceboost01-MI
+    #- iceboost01-DA
+    #- iceboost01-DA-NC
+    #- iceboost01-DA-NOJETS
+    #- iceboost01-DA-MI
+    #- iceboost01-DA-MI-NOJETS
     
     - xgb01
+    - xgb01-NOJETS
+    #- xgb01-ONLYMU
+    #- xgb01-ONLYMU-10-vars
+
+    #- xgb01-ONLYMU
+    #- iceboost01-DA-ONLYMU
+    #- iceboost01-DA-MI-ONLYMU
     
     #- lgr0
     #- dmlp
