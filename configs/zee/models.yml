@@ -3,11 +3,11 @@
 # "Stage 1" model
 #
 # https://xgboost.readthedocs.io/en/latest/parameter.html
-xgb3Drw:
+iceboost3D:
   train:   'xgb'
   predict: 'xgb_logistic'
-  label:   'XGB3DRW'
-  raytune:  xgb_trial_0
+  label:   'ICEBOOST3D'
+  raytune:  xgb_setup_0
   
   # ** Custom set of variables **
   #include_MVA_vars: ['.*']
@@ -15,13 +15,13 @@ xgb3Drw:
   
   # booster parameters
   model_param:
-    num_boost_round: 400      # number of epochs (equal to the number of trees!)
+    num_boost_round: 550          # number of epochs (equal to the number of trees!)
     
-    booster: 'gbtree'         # 'gbtree' (default), 'dart' (dropout boosting)
+    booster: 'gbtree'             # 'gbtree' (default), 'dart' (dropout boosting)
     tree_method: 'hist'
-    device:      'auto'       # 'auto', 'cpu', 'cuda'
+    device:      'auto'           # 'auto', 'cpu', 'cuda'
     
-    learning_rate: 0.1
+    learning_rate: 0.05
     gamma: 1.5
     max_depth: 15
     min_child_weight: 1.0
@@ -46,12 +46,22 @@ xgb3Drw:
       beta: 1.0
       #set_filter: *MAIN_DOMAIN_FILTER # Comment out for 'inclusive'
   
+  # Sliced Wasserstein distance [use with custom:binary_cross_entropy and custom:sliced_wasserstein]
+  #SWD_param:
+  #  beta: 1.0e-3
+  #  p: 1                  # p-norm (1,2, ...)
+  #  num_slices: 500       # Number of MC projections (Higher the better) 
+  #  mode: 'SWD'           # 'SWD' (basic), 'EBSW' (see icefit/transport.py)
+  #  max_N: 400000         # Max events limit (400k & 500 slices works with 32 GB Nvidia V100)
+  #  var: ['.*']           # Use all variables in SWD
+  #  norm_weights: False   # Normalization enforced (if False, model should learn to keep the normalization)
+  
   tensorboard: true
   plot_trees: false
 
   # Read/Write of epochs
-  evalmode: 25                  # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                  # -1 is the last saved epoch
+  evalmode: 5             # Evaluation and saving of the model every n-th epoch (int) during training
+  readmode: -1            # -1 takes the minimum loss model
 
 
 # ------------------------------------------------
@@ -71,15 +81,15 @@ xgb0:
   
   # booster parameters
   model_param:
-    num_boost_round: 500        # number of epochs (equal to the number of trees!)
+    num_boost_round: 550          # number of epochs (equal to the number of trees!)
     
-    booster: 'gbtree'           # 'gbtree' (default), 'dart' (dropout boosting)
+    booster: 'gbtree'             # 'gbtree' (default), 'dart' (dropout boosting)
     tree_method: 'hist'
-    device:      'auto'         # 'auto', 'cpu', 'cuda'
+    device:      'auto'           # 'auto', 'cpu', 'cuda'
     
-    learning_rate: 0.1
+    learning_rate: 0.08
     gamma: 1.5
-    max_depth: 15
+    max_depth: 13
     min_child_weight: 1.0
     max_delta_step: 1.0
     subsample: 1
@@ -95,17 +105,21 @@ xgb0:
     objective: 'binary:logistic'  # Note that 'multi:softprob' does not work with distillation
     eval_metric: ['logloss']      # for custom losses, otherwise 'logloss', 'mlogloss' ...
   
+  # Special optimization
+  opt_param:
+    noise_reg: 0.1                # Scheduled noise regularization
+  
   tensorboard: true
   plot_trees: false
 
   # Read/Write of epochs
-  evalmode: 25                    # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                    # -1 is the last saved epoch
+  evalmode: 5                     # Evaluation and saving of the model every n-th epoch (int) during training
+  readmode: -1                    # -1 takes the minimum loss model
 
 
-# ICEBOOST with custom loss
+# ICEBOOST with custom loss [BCE]
 # 
-iceboost0:
+iceboost0: &ICEBOOST0
   train:   'xgb'
   predict: 'xgb_logistic'
   label:   'ICEBOOST'
@@ -117,110 +131,78 @@ iceboost0:
   
   # booster parameters
   model_param:
-    num_boost_round: 500        # number of epochs (equal to the number of trees!)
+    num_boost_round: 550     # number of epochs (equal to the number of trees!)
     
-    booster: 'gbtree'           # 'gbtree' (default), 'dart' (dropout boosting)
+    booster: 'gbtree'        # 'gbtree' (default), 'dart' (dropout boosting)
     tree_method: 'hist'
-    device:      'auto'         # 'auto', 'cpu', 'cuda'
+    device:      'auto'      # 'auto', 'cpu', 'cuda'
     
-    learning_rate: 0.1
-    gamma: 1.5
-    max_depth: 15
-    min_child_weight: 1.0
-    max_delta_step: 1.0
-    subsample: 1
-
-    colsample_bytree:  0.9
-    colsample_bylevel: 0.9
-    colsample_bynode:  0.9
+    learning_rate: 0.1       # Learning rate (slower -> more conservative updates)
+    gamma: 1.5               # Minimum loss reduction required to make a further partition on a leaf node
+    max_depth: 13            # Maximum depth of a tree (too high may overfit)
+    min_child_weight: 1.0    # Minimum sum of instance weight (hessian) needed in a child (higher -> more conservative)
+    max_delta_step: 1.0      # Constraint on the maximum change in the model's weights
+    subsample: 1             # Subsample ratio of the training instance (=1 uses all data)
     
-    reg_lambda: 2.0               # L2 regularization
-    reg_alpha: 0.05               # L1 regularization
+    colsample_bytree:  0.9   # Specifies the fraction of features to be randomly selected for each tree
+    colsample_bylevel: 0.9   # As 'bytree' but applied to individual tree levels
+    colsample_bynode:  0.9   # The fraction of features to be randomly selected for each split in a tree
+    
+    reg_lambda: 2.0          # L2 reg. A penalty to the weights of the features to prevent overfitting
+    reg_alpha: 0.05          # L1 reg. A penalty to the absolute value of the weights to induce sparsity
     
     # learning task parameters
     objective: 'custom:binary_cross_entropy' # Note that 'multi:softprob' does not work with distillation
+    
     eval_metric: ['custom']                  # for custom losses, otherwise 'logloss', 'mlogloss' ...
+
+  # Special optimization
+  opt_param:
+    noise_reg: 0.1           # Scheduled noise regularization
   
-  # BCE loss domains
+  # BCE loss domains [use with custom:binary_cross_entropy]
   BCE_param:
     main:
       classes: [0,1]
       beta: 1.0
       #set_filter: *MAIN_DOMAIN_FILTER # Comment out for 'inclusive'
+  #    label_eps: 0.05           # label smoothing epsilon (regularization)
   
   tensorboard: true
   plot_trees: false
 
   # Read/Write of epochs
-  evalmode: 25                  # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                  # -1 is the last saved epoch
+  evalmode: 5            # Evaluation and saving of the model every n-th epoch (int) during training
+  readmode: -1           # -1 takes the minimum loss model
 
 
-# ICEBOOST with an additional re-weighting in-the-loop regularization
+# ICEBOOST with custom loss [BCE + Sliced Wasserstein]
 # 
-iceboost_plus:
-  train:   'xgb'
-  predict: 'xgb_scalar'
-  label:   'ICEBOOST-PLUS'
-  raytune:  xgb_setup_0
-  
-  # ** Custom set of variables **
-  #include_MVA_vars: ['.*']
-  #exclude_MVA_vars: ['.*']
-  
-  # booster parameters
-  model_param:
-    num_boost_round: 500        # number of epochs (equal to the number of trees!)
-    
-    booster: 'gbtree'           # 'gbtree' (default), 'dart' (dropout boosting)
-    tree_method: 'hist'
-    device:      'auto'         # 'auto', 'cpu', 'cuda'
-    
-    learning_rate: 0.1
-    gamma: 1.5
-    max_depth: 15
-    min_child_weight: 1.0
-    max_delta_step: 1.0
-    subsample: 1
+iceboost_swd:
 
-    colsample_bytree:  0.9
-    colsample_bylevel: 0.9
-    colsample_bynode:  0.9
-    
-    reg_lambda: 2.0               # L2 regularization
-    reg_alpha: 0.05               # L1 regularization
-    
-    # learning task parameters
-    objective: 'custom:binary_cross_entropy' # Note that 'multi:softprob' does not work with distillation
-    eval_metric: ['custom']                  # for custom losses, otherwise 'logloss', 'mlogloss' ...
+  <<: *ICEBOOST0
   
-  # BCE loss domains
+  label: 'ICEBOOST-SWD'
+
+  # BCE loss domains [use with custom:binary_cross_entropy]
   BCE_param:
     main:
-      classes: [0,1]
       beta: 1.0
-      
-      #set_filter: *MAIN_DOMAIN_FILTER # Comment out for 'inclusive'
-    
-    flat:
       classes: [0,1]
-      beta: 0.01
-      AIRW:
-        classes:  [0]      # One (or two) classes
-        RW_modes: ['LR']   # 'LR', 'inverse-LR', 'DeepEfficiency', 'direct', 'identity'
-
       #set_filter: *MAIN_DOMAIN_FILTER # Comment out for 'inclusive'
+      label_eps: 0.0     # label smoothing epsilon (regularization)
   
-  #MI_param:
-  #  beta: [0.1]                 # Positive for minimizing (for each class in use)
-  #  <<: *MI_REG_PARAM
-  
-  tensorboard: true
-  plot_trees: false
+  # Sliced Wasserstein distance [use with custom:binary_cross_entropy and custom:sliced_wasserstein]
+  SWD_param:
+    beta: 5.0e-2
+    p: 1                   # p-norm (1,2, ...)
+    num_slices: 500        # Number of MC projections (Higher the better) 
+    mode: 'SWD'            # 'SWD' (basic), 'EBSW' (see icefit/transport.py)
+    max_N: 400000          # Max events limit (400k & 500 slices works with 32 GB Nvidia V100)
+    var: ['.*']            # Use all variables in SWD
+    #var: ['fixedGridRhoAll', 'probe_eta', 'probe_pt'] # Use specific ones
+    norm_weights: False    # Normalization enforced (if False, model should learn to keep the normalization)
 
-  # Read/Write of epochs
-  evalmode: 25                  # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                  # -1 is the last saved epoch
 
 # -----------------------------------------------------------------------------
 # Remember to use 'zscore-weighted' (or 'zscore') typically with Neural Networks,
@@ -246,51 +228,59 @@ lzmlp0: &LZMLP
   out_dim: 1   # We want to use sigmoid 1D-output model, comment out for default softmax multiclass
 
   model_param:
-    mlp_dim: [64, 64, 64, 64]     # hidden layer dimensions
-    activation: 'relu'
+    mlp_dim: [96, 96, 96]             # hidden layer dimensions
+    activation: 'silu'
     layer_norm: True
     batch_norm: False                 # normalization layers & dropout can be ill-posed here (operators not 1-to-1 compatible with weighted events)
-    dropout: 0.05
+    dropout: 0.01
     act_after_norm: True
   
   # Optimization
   opt_param:  
-    #lossfunc: 'binary_focal_entropy'  # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
-    lossfunc: 'binary_Lq_entropy'     # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
-    q: 0.8                            # Lq exponent (q < 1 -> high density vals emphasized, q > 1 then low emphasized) 
+    #lossfunc: 'binary_cross_entropy'  # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
+    lossfunc: 'binary_Lq_entropy'     
+    q: 0.85                           # Lq exponent (q < 1 -> high density vals emphasized, q > 1 then low emphasized) 
     
+    SWD_beta: 1.0e-4                  # Sliced Wasserstein [reweighting regularization]
+    SWD_p: 1                          # p-norm (1,2,..), 1 perhaps more robust
+    SWD_num_slices: 1000              # Number of MC projections (higher the better)
+    SWD_mode: 'SWD'                   # 'SWD' (basic)
+    SWD_norm_weights: True            # Normalization enforced
+
     lipschitz_beta:    5.0e-5         # lipschitz regularization (use with 'lzmlp')
     #logit_L1_beta: 1.0e-2            # logit norm reg. ~ beta * torch.sum(|logits|)
     logit_L2_beta: 5.0e-3             # logit norm reg. ~ beta * torch.sum(logits**2)
+    
+    noise_reg: 0.1                    # Scheduled noise regularization
 
-    #gamma: -0.5                       # focal_entropy "exponent"
+    #gamma: -0.5                      # focal_entropy "exponent"
     #temperature: 1                   # logit_norm_cross_entropy "temperature"
     
     optimizer: 'AdamW'
     clip_norm: 1.0
     
-    epochs: 300
-    batch_size: 2048
-    lr: 5.0e-4
-    weight_decay: 1.0e-4       # L2-regularization
+    epochs: 200
+    batch_size: 4096
+    lr: 4.0e-4
+    weight_decay: 1.0e-2       # L2-regularization
   
   # Scheduler
   scheduler_param:
 
-    type: 'cos'
-    period: 30
+    #type: 'cos'
+    #period: 30
     
-    #type: 'step'               # 'cos', 'warm-cos', 'exp', 'step', 'constant' (deeptools.set_scheduler)
-    #step_size: 200             # Number of epochs for drop
-    #gamma: 0.1
+    type: 'step'               # 'cos', 'warm-cos', 'exp', 'step', 'constant' (deeptools.set_scheduler)
+    step_size: 80             # Number of epochs for drop
+    gamma: 0.1
   
   device: 'auto'               # alternative 'cpu:0', 'cuda:0'
   num_workers: 4
   tensorboard: true
   
   # Read/Write of epochs
-  evalmode: 10                 # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                 # -1 is the last saved epoch
+  evalmode: 5                  # Evaluation and saving of the model every n-th epoch (int) during training
+  readmode: -1                 # -1 takes the minimum loss model
   
   eval_batch_size: 4096
 
@@ -330,7 +320,7 @@ fastkan0: &FASTKAN
     grid_min: -2.0                    # Activation learning param
     grid_max:  2.0                    # 
     num_grids:   8                    # 
-    mlp_dim: [64, 64, 64, 64]         # hidden layer dimensions
+    mlp_dim: [96, 96, 96]             # hidden layer dimensions
     use_base_update: True             # Use "base MLP" in addition
     
     last_tanh: True                   # Extra tanh layer
@@ -338,13 +328,21 @@ fastkan0: &FASTKAN
   
   # Optimization
   opt_param:  
-    #lossfunc: 'binary_cross_entropy' # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
-    lossfunc: 'binary_Lq_entropy'     # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
-    q: 0.8                            # Lq exponent (q < 1 -> high density vals emphasized, q > 1 then low emphasized) 
+    #lossfunc: 'binary_cross_entropy'  # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
+    lossfunc: 'binary_Lq_entropy'    # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
+    q: 0.85                           # Lq exponent (q < 1 -> high density vals emphasized, q > 1 then low emphasized) 
     
-    #lipshitz_beta:    1.0e-4         # Lipshitz regularization (use with 'lzmlp')
+    SWD_beta: 1.0e-4                  # Sliced Wasserstein [reweighting regularization]
+    SWD_p: 1                          # p-norm (1,2,..), 1 perhaps more robust
+    SWD_num_slices: 1000              # Number of MC projections (higher the better)
+    SWD_mode: 'SWD'                   # 'SWD' (basic)
+    SWD_norm_weights: True            # Normalization enforced
+    
+    #lipshitz_beta: 1.0e-4            # Lipshitz regularization (use with 'lzmlp')
     #logit_L1_beta: 1.0e-2            # logit norm reg. ~ beta * torch.sum(|logits|)
     logit_L2_beta: 5.0e-3             # logit norm reg. ~ beta * torch.sum(logits**2)
+
+    noise_reg: 0.1                    # Scheduled noise regularization
 
     #gamma: 2                         # focal_entropy "exponent"
     #temperature: 1                   # logit_norm_cross_entropy "temperature"
@@ -352,32 +350,32 @@ fastkan0: &FASTKAN
     optimizer: 'AdamW'
     clip_norm: 1.0
     
-    epochs: 300
-    batch_size: 2048
-    lr: 5.0e-4
+    epochs: 200
+    batch_size: 4096
+    lr: 4.0e-4
     weight_decay: 1.0e-2       # L2-regularization
   
   # Scheduler
   scheduler_param:
-    type: 'cos'
-    period: 30
+    #type: 'cos'
+    #period: 30
     
-    #type: 'step'               # 'cos', 'warm-cos', 'exp', 'step', 'constant' (deeptools.set_scheduler)
-    #step_size: 200             # Number of epochs for drop
-    #gamma: 0.1
+    type: 'step'               # 'cos', 'warm-cos', 'exp', 'step', 'constant' (deeptools.set_scheduler)
+    step_size: 80             # Number of epochs for drop
+    gamma: 0.1
   
   device: 'auto'               # alternative 'cpu:0', 'cuda:0'
   num_workers: 4
   tensorboard: true
 
   # Read/Write of epochs
-  evalmode: 10                 # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                 # -1 is the last saved epoch
+  evalmode: 5                  # Evaluation and saving of the model every n-th epoch (int) during training
+  readmode: -1                 # -1 takes the minimum loss model
   
   eval_batch_size: 4096
 
   # Deploy (or test) mode device
-  deploy_device: 'cpu'        # 'auto', 'cpu', 'cuda'
+  deploy_device: 'cpu'         # 'auto', 'cpu', 'cuda'
 
 
 ## FastKAN
@@ -412,25 +410,33 @@ dmlp0: &DMLP
   out_dim: 1   # We want to use sigmoid 1D-output model, comment out for default softmax multiclass
   
   model_param:
-    mlp_dim: [64, 64, 64, 64]         # hidden layer dimensions
+    mlp_dim: [96, 96, 96]             # hidden layer dimensions
     activation: 'silu'
     layer_norm: True
     batch_norm: False                 # normalization layers & dropout can be ill-posed here (operators not 1-to-1 compatible with weighted events)
-    dropout: 0.05
+    dropout: 0.01
     act_after_norm: True
     
     skip_connections: False
     last_tanh: True                   # Extra tanh layer
     last_tanh_scale: 10.0             # Scale after tanh()
-
+  
   # Optimization
-  opt_param:  
-    #lossfunc: 'binary_cross_entropy'  # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
-    lossfunc: 'binary_Lq_entropy'     # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
-    q: 0.8                            # Lq exponent (q < 1 -> high density vals emphasized, q > 1 then low emphasized) 
+  opt_param:
+    #lossfunc: 'binary_cross_entropy' # binary_cross_entropy, cross_entropy, focal_entropy, logit_norm_cross_entropy
+    lossfunc: 'binary_Lq_entropy'
+    q: 0.85                            # Lq exponent (q < 1 -> high density vals emphasized, q > 1 then low emphasized) 
     
+    SWD_beta: 1.0e-4                  # Sliced Wasserstein [reweighting regularization]
+    SWD_p: 1                          # p-norm (1,2,..), 1 perhaps more robust
+    SWD_num_slices: 1000              # Number of MC projections (higher the better)
+    SWD_mode: 'SWD'                   # 'SWD' (basic)
+    SWD_norm_weights: True            # Normalization enforced
+
     #logit_L1_beta: 1.0e-2            # logit norm reg. ~ lambda * torch.sum(|logits|)
     logit_L2_beta: 5.0e-3             # logit norm reg. ~ lambda * torch.sum(logits**2)
+    
+    noise_reg: 0.1                    # Scheduled noise regularization
 
     #gamma: 2                         # focal_entropy "exponent"
     #temperature: 1                   # logit_norm_cross_entropy "temperature"
@@ -438,27 +444,27 @@ dmlp0: &DMLP
     optimizer: 'AdamW'
     clip_norm: 1.0
     
-    epochs: 300
-    batch_size: 2048
-    lr: 5.0e-4
-    weight_decay: 1.0e-4       # L2-regularization
+    epochs: 200
+    batch_size: 4096
+    lr: 4.0e-4
+    weight_decay: 1.0e-2       # L2-regularization
   
   # Scheduler
   scheduler_param:
-    type: 'cos'
-    period: 30
+    #type: 'cos'
+    #period: 30
     
-    #type: 'step'               # 'cos', 'warm-cos', 'exp', 'step', 'constant' (deeptools.set_scheduler)
-    #step_size: 200             # Number of epochs for drop
-    #gamma: 0.1
+    type: 'step'               # 'cos', 'warm-cos', 'exp', 'step', 'constant' (deeptools.set_scheduler)
+    step_size: 80             # Number of epochs for drop
+    gamma: 0.1
   
   device: 'auto'               # alternative 'cpu:0', 'cuda:0'
   num_workers: 4
   tensorboard: true
   
   # Read/Write of epochs
-  evalmode: 10                 # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                 # -1 is the last saved epoch
+  evalmode: 5                  # Evaluation and saving of the model every n-th epoch (int) during training
+  readmode: -1                 # -1 takes the minimum loss model
   
   eval_batch_size: 4096
 
@@ -492,7 +498,7 @@ dbnf0:
     
     epochs: 250
     batch_size: 512           # Keep it high!
-    lr: 1.0e-3
+    lr: 4.0e-4
     weight_decay: 0.0         # L2-regularization (0 seems OK) 
     polyak: 0.998
 
@@ -519,8 +525,8 @@ dbnf0:
   tensorboard: true
   
   # Read/Write of epochs
-  evalmode: 1                 # Every n-th epoch (integer), evaluation done also for every n-th
-  readmode: -1                # -1 is the last saved epoch
+  evalmode: 1                 # Evaluation and saving of the model every n-th epoch (int) during training
+  readmode: -1                # -1 takes the minimum loss model
 
   eval_batch_size: 4096
 

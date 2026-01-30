@@ -137,11 +137,11 @@ def stepspace(start, stop, step):
     return np.arange(start, stop + step, step)
 
 
-def plot_horizontal_line(ax, color=(0.5,0.5,0.5), linewidth=0.9):
+def plot_horizontal_line(ax, ypos=1.0, color=(0.5,0.5,0.5), linewidth=0.9):
     """ For the ratio plot
     """
     xlim = ax.get_xlim()
-    ax.plot(np.linspace(xlim[0], xlim[1], 2), np.array([1,1]), color=color, linewidth=linewidth)
+    ax.plot(np.linspace(xlim[0], xlim[1], 2), ypos*np.array([1,1]), color=color, linewidth=linewidth)
 
 
 def tick_calc(lim, step, N=6):
@@ -383,9 +383,9 @@ def superplot(data, observable=None, ratio_plot=True, yscale='linear', ratio_err
     for i in range(len(data)):
 
         if data[i]['hdata'].is_empty:
-            print(__name__ + f'.superplot: Skipping empty histogram for entry {i}')
+            print(f'Skipping empty histogram for entry {i}')
             continue
-
+        
         c = data[i]['color']
         if c is None: c = color[i]
 
@@ -429,9 +429,9 @@ def superplot(data, observable=None, ratio_plot=True, yscale='linear', ratio_err
         for i in range(len(data)):
 
             if data[i]['hdata'].is_empty:
-                print(__name__ + f'.superplot: Skipping empty histogram for entry {i} (ratioplot)')
+                print(f'Skipping empty histogram for entry {i} (ratioplot)')
                 continue
-
+            
             c = data[i]['color']
             if c is None: c = color[i]
 
@@ -528,8 +528,8 @@ def histmc(mcdata, all_obs, density=False, scale=None, color=(0,0,1), label='non
         obj[OBS] = {'hdata': hobj(counts, errs, bins, cbins, binscale),
                     'hfunc' : 'hist', 'color': color, 'label': label, 'style' : style}
 
-        print(f'histmc: integral = {obj[OBS]["hdata"].integral():0.2E} ({OBS})')
-        
+        print(f'integral = {obj[OBS]["hdata"].integral():0.2E} ({OBS})')
+    
     return obj
 
 
@@ -562,7 +562,7 @@ def histhepdata(hepdata, all_obs, scale=None, density=False, MC_XS_SCALE=1E12, l
         obj[OBS] = {'hdata': hobj(y, yerr, bins, cbins, binscale),
                     'hfunc' : 'hist', 'color': (0,0,0), 'label': label, 'style' : style}
 
-        print(f'histhepdata: integral = {obj[OBS]["hdata"].integral():0.2E} ({OBS})')
+        print(f'integral = {obj[OBS]["hdata"].integral():0.2E} ({OBS})')
     
     return obj
 

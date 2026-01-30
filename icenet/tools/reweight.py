@@ -6,14 +6,14 @@ import numpy as np
 import awkward as ak
 import torch
 import matplotlib.pyplot as plt
-from termcolor import colored, cprint
 import copy
 
-from icenet.tools import aux
-from icenet.tools import io
-from icenet.tools import prints
-from icenet.deep  import iceboost
-from icenet.deep  import predict
+from icenet.tools import aux, io, prints
+from icenet.deep  import iceboost, predict
+
+# ------------------------------------------
+from icenet import print
+# ------------------------------------------
 
 
 def rw_transform_with_logits(logits, mode, absMax=30):
@@ -37,7 +37,11 @@ def rw_transform_with_logits(logits, mode, absMax=30):
         sigmoid_ = aux.sigmoid
         logits   = np.clip(logits, -absMax, absMax)
     
-    if   mode == 'LR':                # LR trick
+    print(f'Reweight transform with mode: {mode}')
+    
+    # Simplified functions based on ratios of sigmoids
+    
+    if   mode == 'LR':                 # LR trick
         return exp_(logits)
     elif mode == 'inverse-LR':         # Inverse LR trick
         return exp_(-logits)
@@ -71,6 +75,8 @@ def rw_transform(phat, mode, EPS=1E-12):
     else:
         phat = np.clip(phat, EPS, 1-EPS)
     
+    print(f'Reweight transform with mode: {mode}')
+    
     if   mode == 'LR':                    # LR trick
         return phat / (1.0 - phat)
     elif mode == 'inverse-LR':            # Inverse LR trick
@@ -100,7 +106,7 @@ def histogram_helper(x, y, w, ids, pdf, args, EPS):
     h_args    = args['reweight_param']['diff_param']['hist_param']
     variables = diff_args['var']
     
-    print(__name__ + f".histogram_helper: Reference (target) class [{reference_class}] | Found classes: {class_ids} from y")
+    print(f"Reference (target) class [{reference_class}] | Found classes: {class_ids} from y")
     
     ### Collect re-weighting variables
     RV = {}
@@ -123,7 +129,7 @@ def histogram_helper(x, y, w, ids, pdf, args, EPS):
         if   mode == 'log10':
             if np.any(RV[i] <= 0):
                 ind = (RV[i] <= 0)
-                cprint(__name__ + f'.histogram_helper: Variable {var} < 0 (in {np.sum(ind)} elements) in log10 -- truncating to zero', 'red')
+                print(f'Variable {var} < 0 (in {np.sum(ind)} elements) in log10 -- truncating to zero', 'red')
 
             # Transform values
             RV[i] = np.log10(np.maximum(RV[i], EPS))
@@ -171,7 +177,7 @@ def histogram_helper(x, y, w, ids, pdf, args, EPS):
             binedges[i] = np.array(d)
             
         else:
-            raise Exception(__name__ + ': Unknown re-weight binning mode')
+            raise Exception(__name__ + ': Unknown reweight binning mode')
     
     rwparam = {
         'y':               y,
@@ -182,7 +188,7 @@ def histogram_helper(x, y, w, ids, pdf, args, EPS):
     ### Compute 2D-PDFs for each class
     if diff_args['type'] == '2D':
         
-        print(__name__ + f'.histogram_helper: 2D re-weighting with: [{variables[0]}, {variables[1]}] ...')
+        print(f'2D re-weighting with: [{variables[0]}, {variables[1]}] ...')
         
         if pdf is None: # Not given by user
             pdf = {}
@@ -202,7 +208,7 @@ def histogram_helper(x, y, w, ids, pdf, args, EPS):
     ### Compute factorized 1D x 1D product
     elif diff_args['type'] == 'pseudo-ND':
         
-        print(__name__ + f'.histogram_helper: pseudo-ND (2D for now) re-weighting with: [{variables[0]}, {variables[1]}] ...')
+        print(f'pseudo-ND (2D for now) reweighting with: [{variables[0]}, {variables[1]}] ...')
         
         if pdf is None: # Not given by user
             pdf = {}
@@ -232,7 +238,7 @@ def histogram_helper(x, y, w, ids, pdf, args, EPS):
     ### Compute 1D-PDFs for each class
     elif diff_args['type'] == '1D':
         
-        print(__name__ + f'.histogram_helper: 1D re-weighting with: {variables[0]} ...')
+        print(f'1D reweighting with: {variables[0]} ...')
         
         if pdf is None: # Not given by user
             pdf = {}
@@ -342,7 +348,7 @@ def AIRW_helper(x, y, w, ids, pdf, args, x_val, y_val, w_val, EPS=1e-12):
     
     for c in pdf['model'].keys():
         
-        print(__name__ + f'.AIRW_helper: Applying AIRW reweighter to class [{c}]')
+        print(f'Applying AIRW reweighter to class [{c}]')
         
         if   param['predict'] == 'xgb':
             func_predict = predict.pred_xgb(args=args, param=param, feature_names=variables)
@@ -361,23 +367,23 @@ def AIRW_helper(x, y, w, ids, pdf, args, x_val, y_val, w_val, EPS=1e-12):
         
         THRESH = 1E-5
         if min_pred < (-THRESH) or max_pred > (1.0 + THRESH):
-            print(__name__ + f'.AIRW_helper: Detected raw logit output [{min_pred:0.4f}, {max_pred:0.4f}] from the model')
+            print(f'Detected raw logit output [{min_pred:0.4f}, {max_pred:0.4f}] from the model')
             logits = pred
             p      = aux.sigmoid(logits)
-            print(__name__ + f'.AIRW_helper: Corresponding probability output [{np.min(p):0.4f}, {np.max(p):0.4f}]')
+            print(f'Corresponding probability output [{np.min(p):0.4f}, {np.max(p):0.4f}]')
         else:
-            print(__name__ + f'.AIRW_helper: Detected probability output [{min_pred:0.4f}, {max_pred:0.4f}] from the model')
+            print(f'Detected probability output [{min_pred:0.4f}, {max_pred:0.4f}] from the model')
             logits = aux.inverse_sigmoid(pred)
-            print(__name__ + f'.AIRW_helper: Corresponding logit output [{np.min(logits):0.4f}, {np.max(logits):0.4f}]')
+            print(f'Corresponding logit output [{np.min(logits):0.4f}, {np.max(logits):0.4f}]')
         
         # Get weights after the re-weighting transform
-        LR = rw_transform_with_logits(logits=logits, mode=RW_mode)
+        AI_w = rw_transform_with_logits(logits=logits, mode=RW_mode)
         
         # Apply maximum weight regularization
-        LR = np.clip(LR, 0.0, MAX_REG)
+        AI_w = np.clip(AI_w, 0.0, MAX_REG)
         
-        # Apply multiplicatively to weights
-        wnew[ind] = wnew[ind] * LR
+        # Apply multiplicatively to event weights
+        wnew[ind] = wnew[ind] * AI_w
         # -----------------------------------------------
     
     # Transform weights into weights doublet
@@ -389,8 +395,21 @@ def AIRW_helper(x, y, w, ids, pdf, args, x_val, y_val, w_val, EPS=1e-12):
     
     return weights_doublet, pdf
 
+
+def doublet_helper(x, y, w, class_ids):
+
+    weights_doublet = {}
     
-def compute_ND_reweights(x, y, w, ids, args, pdf=None, EPS=1e-12, x_val=None, y_val=None, w_val=None):
+    for c in class_ids:
+        weights_doublet[c] = np.zeros(len(x))                   # init with zeros
+        sample_weights     = w[y==c] if w is not None else 1.0  # Feed in the input weights
+        weights_doublet[c][y == c] = sample_weights
+
+    return weights_doublet    
+
+
+def compute_ND_reweights(x, y, w, ids, args, pdf=None, EPS=1e-12,
+                         x_val=None, y_val=None, w_val=None, skip_reweights=False):
     """
     Compute N-dim reweighting coefficients
     
@@ -410,7 +429,7 @@ def compute_ND_reweights(x, y, w, ids, args, pdf=None, EPS=1e-12, x_val=None, y_
         weights : 1D-array of re-weights
         pdf     : computed pdfs
     """
-    
+        
     use_ak = True if isinstance(x, ak.Array) else False
     
     if use_ak:
@@ -425,7 +444,7 @@ def compute_ND_reweights(x, y, w, ids, args, pdf=None, EPS=1e-12, x_val=None, y_
     ## Differential reweighting
     if args['reweight_param']['differential']:
         
-        print(__name__ + f'.compute_ND_reweights: Differential reweighting')
+        print(f'Differential reweighting')
         
         # Histogram based
         if args['reweight_param']['diff_param']['type'] != 'AIRW':
@@ -440,28 +459,32 @@ def compute_ND_reweights(x, y, w, ids, args, pdf=None, EPS=1e-12, x_val=None, y_
         
         # Renormalize integral (sum) to the event counts per class
         if args['reweight_param']['diff_param']['renorm_weight_to_count']:
-            print(__name__ + f'.compute_ND_reweights: Renormalizing sum(weights) == sum(count) per class')    
+            print(f'Renormalizing sum(weights) == sum(count) per class')    
             for c in class_ids:
                 ind = (y == c)
                 weights_doublet[c][ind] /= np.sum(weights_doublet[c][ind])
                 weights_doublet[c][ind] *= np.sum(ind)
-    
+
+        # ---------------------------------------------------------------
+        # Special mode -- allows to only train pdf but then do not apply
+        if skip_reweights:
+            print(f'Special mode [skip_reweights] active: differential reweight model not applied', 'red')    
+            weights_doublet = doublet_helper(x=x, y=y, w=w, class_ids=class_ids)
+        
+        # ---------------------------------------------------------------
+        
     # No differential re-weighting    
     else:
-        print(__name__ + f'.compute_ND_reweights: No differential reweighting')
-        print(__name__ + f".compute_ND_reweights: Reference [target] class: [{args['reweight_param']['reference_class']}] | Found classes {class_ids} from y")
-        weights_doublet = {}
-        
-        for c in class_ids:
-            weights_doublet[c] = np.zeros(len(x))                   # init with zeros
-            sample_weights     = w[y==c] if w is not None else 1.0  # Feed in the input weights
-            weights_doublet[c][y == c] = sample_weights
+        print(f"No differential reweighting")
+        print(f"Reference [target] class: [{args['reweight_param']['reference_class']}] | Found classes {class_ids} from y")
+
+        weights_doublet = doublet_helper(x=x, y=y, w=w, class_ids=class_ids)
     
-    # -------------------------------------------------
+    # --------------------------------------------------------
     
     ### Apply class balance equalizing weight
     if (args['reweight_param']['equal_frac'] == True):
-        cprint(__name__ + f'.Compute_ND_reweights: Equalizing class fractions', 'green')
+        print(f"Equalizing class fractions", "green")
         weights_doublet = balanceweights(weights_doublet=weights_doublet,
                                          reference_class=args['reweight_param']['reference_class'], y=y)
 
@@ -513,7 +536,8 @@ def reweightcoeff1D(X, y, pdf, reference_class, max_reg = 1e3, EPS=1e-12):
 
 
 def reweightcoeff2D(X_A, X_B, y, pdf, reference_class, max_reg = 1e3, EPS=1E-12):
-    """ Compute N-class density reweighting coefficients.
+    """
+    Compute N-class density reweighting coefficients.
     
     Operates in full 2D without any factorization.
     

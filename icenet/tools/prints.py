@@ -7,21 +7,25 @@ import psutil
 from typing import List
 from prettytable import PrettyTable
 
-from termcolor import colored, cprint
-from icenet.tools import aux
+from termcolor import colored
+from icenet.tools import aux, io
+
+# ------------------------------------------
+from icenet import print
+# ------------------------------------------
 
 
 def print_RAM_usage():
     """ 
     """
-    cprint(__name__ + f""".prints: Process RAM usage: {io.process_memory_use():0.2f} GB [total RAM in use: {psutil.virtual_memory()[2]} %]""", 'red')
+    print(f"""Process RAM usage: {io.process_memory_use():0.2f} GB [total RAM in use: {psutil.virtual_memory()[2]} %]""", 'red')
 
 
-def printbar(marker='-', marks = 75):
+def printbar(marker='-', marks:int = 75):
     """ Print bar.
     """
-    for i in range(marks):
-        print(marker, end='')
+    txt = marker*marks
+    print(txt)
     print('')
 
 
@@ -70,7 +74,7 @@ def print_flow(flow):
         print(f'{index} | {key:20s} | {value:6.0f} [{frac:6.4f}]')
 
 
-def print_weights(weights, y, output_file=None):
+def print_weights(weights, y, output_file=None, header=None, write_mode='w'):
     """
     Print event weights table
     """
@@ -104,8 +108,13 @@ def print_weights(weights, y, output_file=None):
     
     # Print to file
     if output_file is not None:
-        with open(output_file, 'w') as f:
+        with open(output_file, write_mode) as f:
+            if header is not None:
+                print(header, file=f)
+                print('\n', file=f)
             print(table, file=f)
+            if header is not None:
+                print('\n', file=f)
     
     return table
 
@@ -123,9 +132,7 @@ def print_variables(X : np.array, ids: List[str], W=None, exclude_vals=None, out
         prettyprint table of stats
     """
     
-    print('\n')
-    print(__name__ + f'.print_variables:')
-
+    print('')
     print(f'Excluding values: {exclude_vals}')
     
     table = PrettyTable(["i", "variable", "min", "Q1", "Q5", "med", "Q95", "Q99", "max", "# unique", "mean", "std", "#Inf", "#NaN"]) 
